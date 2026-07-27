@@ -138,6 +138,9 @@ claude_session_*
 *.claude_session
 .claude/
 
+# CodeGraph local index (machine-local, rebuilt via `codegraph init`)
+.codegraph/
+
 # PyCharm
 .idea/
 
