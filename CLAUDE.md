@@ -12,6 +12,7 @@ The "arXiv Paper Curator" — a learner-focused, production-style RAG system bui
 # Setup
 uv sync                          # Install Python dependencies
 cp .env.example .env             # Configure environment (edit for JINA_API_KEY, TELEGRAM__BOT_TOKEN, LANGFUSE__* as needed)
+codegraph init                   # Build the local CodeGraph index (.codegraph/, gitignored); `codegraph sync` after large edits
 
 # Run the full stack (FastAPI, Postgres, OpenSearch, Airflow, Ollama, Redis, Langfuse)
 make start                       # == docker compose up --build -d
