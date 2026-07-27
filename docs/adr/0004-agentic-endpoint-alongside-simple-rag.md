@@ -1,0 +1,3 @@
+# LangGraph agentic pipeline alongside, not instead of, the simple RAG endpoints
+
+Week 7 added an agentic pipeline (Guardrail → Retrieve → Grade → Rewrite → Generate, `src/services/agents/`) as a new `/api/v1/agentic-ask` endpoint, kept separate from the existing `/api/v1/ask` and `/api/v1/stream` endpoints rather than replacing them. This preserves a fast, predictable single-pass path for simple queries while offering adaptive, multi-step retrieval (guardrails, relevance grading, query rewriting) where it earns its extra latency and cost. Callers (API clients, Telegram bot) choose which mode they need per request.
