@@ -76,13 +76,22 @@ Everything routes through a single hybrid OpenSearch index (`{index_name}-{chunk
 
 ### Cross-cutting services
 
-- **Cache** (`services/cache/`): Redis, exact-match keys, TTL-based, used to short-circuit repeated `ask` queries — must fail gracefully (RAG endpoints work with cache down).
+- **Cache** (`services/cache/`): Redis, exact-match keys, TTL-based, used to short-circuit repeated `ask` queries. Per-request cache operations fail gracefully, but a Redis outage at boot currently crashes app startup — see ADR-0005's "Known gap".
 - **Langfuse** (`services/langfuse/`): tracing wrapped around the RAG/agentic pipelines; toggled via `LANGFUSE__ENABLED`.
 - **Telegram** (`services/telegram/`): thin bot layer over the same `opensearch_client`/`embeddings_client`/`ollama_client`/`cache_client` used by the HTTP API — constructed in `main.py` lifespan with those pre-built clients passed in, not built independently.
 
 ### Tests
 
 `tests/unit/` (service- and schema-level, isolated), `tests/api/` (router-level via FastAPI test client, `tests/api/conftest.py` for fixtures), `tests/integration/` (`test_services.py`, exercises real service wiring — check for `testcontainers` usage before assuming a live stack is required). `.env.test` supplies test-time config (loaded via `pytest-dotenv`/`pytest-env`, configured in `pyproject.toml`).
+
+**Run `uv sync --group dev` before testing.** Without it, `tests/api` and several `tests/unit` modules fail to collect (`ModuleNotFoundError: No module named 'langfuse'`, etc.) — `langfuse` and a few other main-dependency-group packages weren't locked in `uv.lock` until this was run.
+
+**Patch factories where they're imported, not where they're defined.** `tests/api/conftest.py`'s `client` fixture patches `src.main.make_x_client` / `src.routers.ping.OllamaClient`, not `src.services.x.factory.make_x_client`. `main.py`/`ping.py` do `from src.services.x.factory import make_x_client`, which binds its own name into the importing module's namespace — patching the origin module leaves that reference untouched and the real (network-calling) factory still runs. Getting this wrong doesn't fail loudly for clients that don't eagerly connect (arXiv, PDF parser, Ollama) but does for ones that do (Redis/cache at construction, OpenSearch via the `/health` check) — this previously made every `tests/api` run take ~5 minutes retrying dead connections instead of ~1 second.
+
+**Known gaps (found during #2, not fixed there):**
+- `tests/unit/services/agents/` (`test_agentic_rag.py`, `test_nodes.py`, `test_tools.py` — 22 tests) has no `conftest.py`; all error with `fixture 'mock_opensearch_client' not found`. Needs its own conftest providing mocks for the agent nodes' dependencies.
+- `tests/unit/services/test_pdf_parser.py::test_parse_pdf_success` / `test_parse_pdf_no_result` fail — the mocks still `await` `PDFParserService.parse_pdf`, which stopped being a coroutine after the async was removed from it.
+- `tests/api/routers/test_agentic_ask.py::test_ask_agentic_with_rewritten_query` / `test_ask_agentic_custom_model` fail on assertions that don't match current response shape/kwargs.
 
 ## Agent skills
 
