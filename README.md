@@ -556,6 +556,12 @@ uv run pytest                 # Run tests
 
 ---
 
+## Related Projects
+
+Sibling repo [on_prem_rag](https://github.com/pkuppens/on_prem_rag.git) is a separate on-premises RAG system (FastAPI, ChromaDB, Ollama) built by the same author, actively adopting techniques and lessons learned from this course. Improvements proven out here may be ported there; the reverse is not expected.
+
+---
+
 ## Star History
 
 [![Star History Chart](https://api.star-history.com/svg?repos=jamwithai/production-agentic-rag-course&type=Date)](https://star-history.com/#jamwithai/production-agentic-rag-course&Date)

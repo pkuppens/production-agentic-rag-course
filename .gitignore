@@ -137,7 +137,6 @@ claude_session_*
 .claude_session/
 *.claude_session
 .claude/
-CLAUDE.md
 
 # PyCharm
 .idea/
