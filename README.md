@@ -84,14 +84,16 @@ By the end of this course, you'll have your own AI research assistant and the de
 
 ```bash
 # 1. Clone and setup
-git clone <repository-url>
+git clone <repository-url> arxiv-paper-curator
+
+# original text missed arxiv-paper-curator argument, I think incorrectly because the repo name is different.
 cd arxiv-paper-curator
 
 # 2. Configure environment (IMPORTANT!)
 cp .env.example .env
 # The .env file contains all necessary configuration for OpenSearch, 
 # arXiv API, and service connections. Defaults work out of the box.
-# You need to add Jina embeddings free api key and langfuse keys (check the blogs)
+# You need to add Jina embeddings free api key and langfuse keys by week 4 (check the blogs)
 
 # 3. Install dependencies
 uv sync
