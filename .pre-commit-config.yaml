@@ -15,4 +15,9 @@ repos:
       args: [
         --ignore-missing-imports,
         --disable-error-code=import-untyped
-      ] 
+      ]
+- repo: https://github.com/kynan/nbstripout
+  rev: 0.9.1
+  hooks:
+    - id: nbstripout
+      files: ^notebooks/week1/week1_setup\.ipynb$ 
