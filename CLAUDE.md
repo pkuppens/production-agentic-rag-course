@@ -6,4 +6,4 @@
 
 ## Related Projects
 
-Sibling repo `../on_prem_rag` ([pkuppens/on_prem_rag](https://github.com/pkuppens/on_prem_rag.git)) is a separate on-premises RAG system (FastAPI, ChromaDB, Ollama) that is actively adopting lessons and techniques from this course. When a technique here (hybrid search, agentic workflows, pipeline design, etc.) proves valuable, consider whether it's also worth porting to `on_prem_rag`.
+Sibling repo [pkuppens/on_prem_rag](https://github.com/pkuppens/on_prem_rag.git) is a separate on-premises RAG system (FastAPI, ChromaDB, Ollama) that is actively adopting lessons and techniques from this course; the reverse is not expected. When a technique here (hybrid search, agentic workflows, pipeline design, etc.) proves valuable, consider whether it's also worth porting to `on_prem_rag`.
