@@ -25,6 +25,10 @@ When set to `yes`, PRs run through the same labels and states as issues, using t
 
 GitHub shares one number space across issues and PRs, so a bare `#42` may be either — resolve with `gh pr view 42` and fall back to `gh issue view 42`.
 
+## Reviews aren't limited to the PR review UI
+
+Agents can review work via plain issue/PR comments, not just formal GitHub PR reviews — treat a substantive `gh issue comment`/`gh pr comment` the same as a formal review comment (record it, act on it, expect it to be checked off). Similarly, an agent or human closing an issue or PR (`gh issue close` / `gh pr close`) counts as a formal review-approved closing, not a silent dismissal — don't close without the equivalent of review sign-off (acceptance criteria met, or an explicit reason in the closing comment).
+
 ## When a skill says "publish to the issue tracker"
 
 Create a GitHub issue.
