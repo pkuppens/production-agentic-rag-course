@@ -26,6 +26,8 @@ dependencies = [
     "langchain-core>=0.3.0",
     "langchain-community>=0.3.0",
     "langchain-ollama>=0.3.0",
+    "huggingface-hub[hf-xet]>=0.34.4",
+    "torch>=2.5.0",
 ]
 readme = "README.md"
 
@@ -68,5 +70,15 @@ env_files = ".env.test"
 [tool.mypy]
 explicit_package_bases = true
 ignore_errors = true
+
+[tool.uv.sources]
+torch = [
+    { index = "pytorch-cu124", marker = "sys_platform == 'win32'" },
+]
+
+[[tool.uv.index]]
+name = "pytorch-cu124"
+url = "https://download.pytorch.org/whl/cu124"
+explicit = true
 
 
