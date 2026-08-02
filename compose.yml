@@ -13,7 +13,7 @@ services:
       redis:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/health')\""]
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health')\""]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -26,9 +26,10 @@ services:
       - OPENSEARCH__HOST=http://opensearch:9200
       - OLLAMA_HOST=http://ollama:11434
       - POSTGRES_DATABASE_URL=postgresql+psycopg2://rag_user:rag_password@postgres:5432/rag_db
-      - LANGFUSE_HOST=http://langfuse-web:3000 
+      - LANGFUSE_HOST=http://langfuse-web:3000
       - LANGFUSE_DEBUG=true
       - REDIS__HOST=redis
+      - HF_HUB_DISABLE_SYMLINKS_WARNING=1
     networks:
       - rag-network
 
@@ -58,6 +59,7 @@ services:
       - OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m
       - DISABLE_SECURITY_PLUGIN=true
       - bootstrap.memory_lock=true
+      - http.compression=false
     ports:
       - "9200:9200"
       - "9600:9600"
@@ -68,7 +70,7 @@ services:
     volumes:
       - opensearch_data:/usr/share/opensearch/data
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
+      test: ["CMD-SHELL", "curl -f http://127.0.0.1:9200/_cluster/health || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -88,7 +90,7 @@ services:
     depends_on:
       - opensearch
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:5601/api/status || exit 1"]
+      test: ["CMD-SHELL", "curl -f http://127.0.0.1:5601/api/status || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -117,6 +119,7 @@ services:
       - OPENSEARCH__HOST=http://opensearch:9200
       - OLLAMA_HOST=http://ollama:11434
       - REDIS__HOST=redis
+      - HF_HUB_DISABLE_SYMLINKS_WARNING=1
     volumes:
       - ./airflow/dags:/opt/airflow/dags
       - airflow_logs:/opt/airflow/logs
@@ -126,7 +129,7 @@ services:
       - "8080:8080"
     # Command handled by entrypoint.sh
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:8080/health"]
       interval: 30s
       timeout: 10s
       retries: 3

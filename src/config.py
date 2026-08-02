@@ -91,7 +91,7 @@ class OpenSearchSettings(BaseConfigSettings):
         case_sensitive=False,
     )
 
-    host: str = "http://localhost:9200"
+    host: str = "http://127.0.0.1:9200"
     index_name: str = "arxiv-papers"
     chunk_index_suffix: str = "chunks"  # Creates single hybrid index: {index_name}-{suffix}
     max_text_size: int = 1000000
@@ -116,7 +116,7 @@ class LangfuseSettings(BaseConfigSettings):
 
     public_key: str = ""
     secret_key: str = ""
-    host: str = "http://localhost:3000"  # Self-hosted Langfuse URL
+    host: str = "http://127.0.0.1:3000"  # Self-hosted Langfuse URL
     enabled: bool = True
     flush_at: int = 15  # Number of events before flushing
     flush_interval: float = 1.0  # Seconds between flushes
@@ -134,7 +134,7 @@ class RedisSettings(BaseConfigSettings):
         case_sensitive=False,
     )
 
-    host: str = "localhost"
+    host: str = "127.0.0.1"
     port: int = 6379
     password: str = ""
     db: int = 0
@@ -165,12 +165,12 @@ class Settings(BaseConfigSettings):
     environment: Literal["development", "staging", "production"] = "development"
     service_name: str = "rag-api"
 
-    postgres_database_url: str = "postgresql://rag_user:rag_password@localhost:5432/rag_db"
+    postgres_database_url: str = "postgresql://rag_user:rag_password@127.0.0.1:5432/rag_db"
     postgres_echo_sql: bool = False
     postgres_pool_size: int = 20
     postgres_max_overflow: int = 0
 
-    ollama_host: str = "http://localhost:11434"
+    ollama_host: str = "http://127.0.0.1:11434"
     ollama_model: str = "llama3.2:1b"
     ollama_timeout: int = 300
 
