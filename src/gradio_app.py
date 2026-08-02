@@ -8,7 +8,7 @@ import httpx
 logger = logging.getLogger(__name__)
 
 # Configuration
-API_BASE_URL = "http://localhost:8000/api/v1"
+API_BASE_URL = "http://127.0.0.1:8000/api/v1"
 DEFAULT_MODEL = "llama3.2:1b"
 AVAILABLE_CATEGORIES = ["cs.AI", "cs.LG"]
 
