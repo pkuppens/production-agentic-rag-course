@@ -20,4 +20,4 @@ repos:
   rev: 0.9.1
   hooks:
     - id: nbstripout
-      files: ^notebooks/week1/week1_setup\.ipynb$ 
+      files: ^notebooks/.*\.ipynb$ 
