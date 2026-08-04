@@ -30,6 +30,13 @@ services:
       - LANGFUSE_DEBUG=true
       - REDIS__HOST=redis
       - HF_HUB_DISABLE_SYMLINKS_WARNING=1
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
     networks:
       - rag-network
 
@@ -128,6 +135,13 @@ services:
     ports:
       - "8080:8080"
     # Command handled by entrypoint.sh
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
     healthcheck:
       test: ["CMD", "curl", "-f", "http://127.0.0.1:8080/health"]
       interval: 30s
