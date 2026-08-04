@@ -3,8 +3,12 @@ set -e
 
 # Clean up any existing PID files and processes
 echo "Cleaning up any existing Airflow processes..."
-pkill -f "airflow webserver" || true
-pkill -f "airflow scheduler" || true
+if command -v pkill >/dev/null 2>&1; then
+    pkill -f "airflow webserver" || true
+    pkill -f "airflow scheduler" || true
+else
+    echo "pkill not available; skipping process cleanup"
+fi
 rm -f /opt/airflow/airflow-webserver.pid
 rm -f /opt/airflow/airflow-scheduler.pid
 

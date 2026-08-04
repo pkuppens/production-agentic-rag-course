@@ -14,6 +14,7 @@ RUN apt-get update && \
         git \
         libpq-dev \
         poppler-utils \
+        procps \
         tesseract-ocr \
         && rm -rf /var/lib/apt/lists/*
 
