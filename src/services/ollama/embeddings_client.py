@@ -28,6 +28,10 @@ class OllamaEmbeddingsClient(BaseEmbeddingsClient):
         self.model = model or settings.embeddings.ollama_embedding_model
         logger.info(f"Ollama embeddings client initialized (model={self.model})")
 
+    @property
+    def model_label(self) -> str:
+        return f"ollama:{self.model}"
+
     async def _embed(self, inputs: List[str]) -> List[List[float]]:
         """Call Ollama's /api/embed endpoint for one or more inputs.
 

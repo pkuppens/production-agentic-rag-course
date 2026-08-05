@@ -9,6 +9,16 @@ class BaseEmbeddingsClient(ABC):
     embeddings provider can be swapped via configuration.
     """
 
+    @property
+    @abstractmethod
+    def model_label(self) -> str:
+        """A stable "provider:model" label identifying what generated an embedding.
+
+        Stored alongside every indexed chunk so a provider/model swap without
+        reindexing can be detected instead of silently mixing incompatible
+        vectors in the same index.
+        """
+
     @abstractmethod
     async def embed_passages(self, texts: List[str], batch_size: int = 100) -> List[List[float]]:
         """Embed text passages for indexing.
