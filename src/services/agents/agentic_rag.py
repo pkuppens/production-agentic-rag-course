@@ -6,7 +6,7 @@ from langchain_core.messages import HumanMessage
 from langfuse.langchain import CallbackHandler
 from langgraph.graph import END, START, StateGraph
 from langgraph.prebuilt import ToolNode, tools_condition
-from src.services.embeddings.jina_client import JinaEmbeddingsClient
+from src.services.embeddings.base import BaseEmbeddingsClient
 from src.services.langfuse.client import LangfuseTracer
 from src.services.ollama.client import OllamaClient
 from src.services.opensearch.client import OpenSearchClient
@@ -42,7 +42,7 @@ class AgenticRAGService:
         self,
         opensearch_client: OpenSearchClient,
         ollama_client: OllamaClient,
-        embeddings_client: JinaEmbeddingsClient,
+        embeddings_client: BaseEmbeddingsClient,
         langfuse_tracer: Optional[LangfuseTracer] = None,
         graph_config: Optional[GraphConfig] = None,
     ):

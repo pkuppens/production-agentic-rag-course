@@ -4,10 +4,12 @@ from typing import List
 import httpx
 from src.schemas.embeddings.jina import JinaEmbeddingRequest, JinaEmbeddingResponse
 
+from .base import BaseEmbeddingsClient
+
 logger = logging.getLogger(__name__)
 
 
-class JinaEmbeddingsClient:
+class JinaEmbeddingsClient(BaseEmbeddingsClient):
     """Client for Jina AI embeddings API.
 
     Uses Jina embeddings v3 model with 1024 dimensions optimized for retrieval.

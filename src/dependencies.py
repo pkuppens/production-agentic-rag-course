@@ -17,7 +17,7 @@ from src.services.agents.agentic_rag import AgenticRAGService
 from src.services.agents.factory import make_agentic_rag_service
 from src.services.arxiv.client import ArxivClient
 from src.services.cache.client import CacheClient
-from src.services.embeddings.jina_client import JinaEmbeddingsClient
+from src.services.embeddings.base import BaseEmbeddingsClient
 from src.services.langfuse.client import LangfuseTracer
 from src.services.ollama.client import OllamaClient
 from src.services.opensearch.client import OpenSearchClient
@@ -62,7 +62,7 @@ def get_pdf_parser(request: Request) -> PDFParserService:
     return request.app.state.pdf_parser
 
 
-def get_embeddings_service(request: Request) -> JinaEmbeddingsClient:
+def get_embeddings_service(request: Request) -> BaseEmbeddingsClient:
     """Get embeddings service from the request state."""
     return request.app.state.embeddings_service
 
@@ -94,7 +94,7 @@ SessionDep = Annotated[Session, Depends(get_db_session)]
 OpenSearchDep = Annotated[OpenSearchClient, Depends(get_opensearch_client)]
 ArxivDep = Annotated[ArxivClient, Depends(get_arxiv_client)]
 PDFParserDep = Annotated[PDFParserService, Depends(get_pdf_parser)]
-EmbeddingsDep = Annotated[JinaEmbeddingsClient, Depends(get_embeddings_service)]
+EmbeddingsDep = Annotated[BaseEmbeddingsClient, Depends(get_embeddings_service)]
 OllamaDep = Annotated[OllamaClient, Depends(get_ollama_client)]
 LangfuseDep = Annotated[LangfuseTracer, Depends(get_langfuse_tracer)]
 CacheDep = Annotated[CacheClient | None, Depends(get_cache_client)]
