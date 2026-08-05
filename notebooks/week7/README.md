@@ -162,7 +162,7 @@ jupyter notebook notebooks/week7/week7_agentic_rag.ipynb
 
 - ✅ **SOLID** - Single responsibility, dependency inversion, composition
 - ✅ **KISS** - Simple nodes (<30 lines), clear logic
-- ✅ **DRY** - Reused existing services (OpenSearch, Ollama, Jina)
+- ✅ **DRY** - Reused existing services (OpenSearch, Ollama, embeddings)
 - ✅ **YAGNI** - Only implemented what's needed
 - ✅ **Explicit** - Type hints, docstrings, clear names
 - ✅ **2025 Best Practices** - MessagesState, ToolNode, tools_condition
@@ -554,7 +554,7 @@ Settings persist across sessions and are stored in-memory (for production, consi
 The Telegram bot integrates with all existing Week 1-6 services:
 
 1. **OpenSearch** - Hybrid search for relevant papers
-2. **Jina Embeddings** - Semantic search capabilities
+2. **Embeddings** (Ollama local by default, or Jina cloud) - Semantic search capabilities
 3. **Ollama LLM** - Answer generation
 4. **Redis Cache** - 150-400x speedup for repeated queries
 5. **Langfuse** - Complete tracing of Telegram interactions
@@ -572,7 +572,7 @@ async def handle_message(update, context):
     5. Check cache (Redis)
     6. If cache hit → format and send
     7. If cache miss:
-        a. Generate embedding (Jina)
+        a. Generate embedding (Ollama or Jina, per EMBEDDINGS__PROVIDER)
         b. Search papers (OpenSearch)
         c. Build prompt with context
         d. Generate answer (Ollama)

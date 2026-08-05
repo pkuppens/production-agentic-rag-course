@@ -83,7 +83,8 @@ uv run python gradio_launcher.py
 # .env file
 OLLAMA_HOST=http://ollama:11434
 OLLAMA__DEFAULT_MODEL=llama3.2:1b
-JINA_API_KEY=your_key_here  # For embeddings
+EMBEDDINGS__PROVIDER=ollama  # local, free, on-prem (recommended); or "jina" for the cloud API
+EMBEDDINGS__OLLAMA_EMBEDDING_MODEL=bge-m3  # nomic-embed-text | mxbai-embed-large | bge-m3
 ```
 
 ## Testing
