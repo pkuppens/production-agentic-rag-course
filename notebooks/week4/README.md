@@ -21,8 +21,8 @@ Week 4 implements a **production-grade hybrid search system** that combines the 
 - **Production API**: RESTful endpoint `/api/v1/hybrid-search/` with comprehensive validation
 
 ### 🤖 **Real Embedding Integration**
-- **Configurable provider**: `EMBEDDINGS__PROVIDER=ollama` (local, free, on-prem — recommended) or `jina` (cloud API)
-- **Ollama embeddings**: run fully on-prem via a local Ollama instance; supports `nomic-embed-text`, `mxbai-embed-large`, or `bge-m3` (1024-dim, multilingual — matches this repo's mapping)
+- **Local, on-prem embeddings**: `EMBEDDINGS__PROVIDER=ollama` runs fully on-prem via a local Ollama instance — no API key, nothing leaves the host
+- **Selectable model**: `nomic-embed-text`, `mxbai-embed-large`, or `bge-m3` (1024-dim, multilingual — matches this repo's mapping)
 - **Automatic Generation**: FastAPI endpoints automatically generate query embeddings
 - **Fallback Strategy**: Graceful degradation to BM25 when embeddings unavailable
 - **Performance Optimized**: Efficient embedding generation and storage
@@ -176,9 +176,8 @@ POSTGRES_DATABASE_URL=postgresql+psycopg2://rag_user:rag_password@postgres:5432/
 OPENSEARCH__HOST=http://opensearch:9200
 
 # Embeddings (Required for Hybrid Search)
-EMBEDDINGS__PROVIDER=ollama                       # or "jina" for the cloud API
+EMBEDDINGS__PROVIDER=ollama
 EMBEDDINGS__OLLAMA_EMBEDDING_MODEL=bge-m3          # nomic-embed-text | mxbai-embed-large | bge-m3
-# JINA_API_KEY=jina_your_api_key_here              # only needed if EMBEDDINGS__PROVIDER=jina
 
 # Chunking Configuration
 CHUNKING__CHUNK_SIZE=600
@@ -276,7 +275,7 @@ opensearch:
 **Embedding Service Optimization**:
 - **Batch Processing**: Process multiple embeddings per API call
 - **Caching**: Cache frequent query embeddings
-- **Rate Limiting**: only relevant with `EMBEDDINGS__PROVIDER=jina` — respect Jina AI's API limits (1000 requests/minute). Not applicable to the local Ollama provider.
+- **Local Generation**: embeddings run on-prem via Ollama — no rate limits or per-call cost to manage
 - **Fallback Strategy**: BM25-only mode when embeddings unavailable
 
 ### **Monitoring and Observability**
@@ -319,19 +318,13 @@ curl "http://localhost:9200/arxiv-papers-chunks/_mapping"
 
 **3. Slow or Failing Embedding Generation**
 ```bash
-# Check which provider/model is configured
+# Check which model is configured
 docker compose exec api env | grep EMBEDDINGS
 
-# If using Ollama (recommended, local):
-docker compose exec ollama ollama list           # confirm the model is pulled
+# Confirm the model is pulled in Ollama
+docker compose exec ollama ollama list
 curl -X POST "http://localhost:11434/api/embed" \
   -d '{"model": "bge-m3", "input": ["test"]}'
-
-# If using Jina (cloud API):
-docker compose exec api env | grep JINA
-curl -X POST "https://api.jina.ai/v1/embeddings" \
-  -H "Authorization: Bearer $JINA_API_KEY" \
-  -d '{"model": "jina-embeddings-v3", "input": ["test"]}'
 ```
 
 **4. "Index contains chunks embedded with a different model" error**
@@ -359,7 +352,7 @@ jupyter notebook week4_hybrid_search.ipynb
 3. **Execute All Cells**: The notebook includes:
    - Environment setup and health checks
    - Section-based chunking demonstration
-   - Real embedding generation (Ollama local by default, or Jina cloud)
+   - Real embedding generation with local Ollama models
    - All search modes (BM25, Vector, Hybrid)
    - Production API endpoint testing
    - Performance comparison
@@ -409,8 +402,7 @@ src/
 │   │   └── factory.py             # Indexing service factory
 │   ├── embeddings/
 │   │   ├── base.py                # BaseEmbeddingsClient interface
-│   │   ├── jina_client.py         # Jina AI client (cloud)
-│   │   └── factory.py             # Embedding service factory (provider switch)
+│   │   └── factory.py             # Embedding service factory
 │   └── ollama/
 │       └── embeddings_client.py   # Ollama embeddings client (local)
 ├── schemas/
@@ -428,7 +420,6 @@ notebooks/week4/
 
 - **OpenSearch Documentation**: https://opensearch.org/docs/
 - **Ollama Embedding Models**: https://ollama.com/search?c=embedding
-- **Jina AI Embeddings** (optional cloud alternative): https://jina.ai/embeddings/
 - **FastAPI Documentation**: https://fastapi.tiangolo.com/
 - **Reciprocal Rank Fusion Paper**: https://plg.uwaterloo.ca/~gvcormac/cormacksigir09-rrf.pdf
 - **Week 4 Notebook**: [week4_hybrid_search.ipynb](./week4_hybrid_search.ipynb)

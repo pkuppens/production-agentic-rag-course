@@ -4,7 +4,6 @@ from src.config import Settings, get_settings
 from src.services.ollama.embeddings_client import OllamaEmbeddingsClient
 
 from .base import BaseEmbeddingsClient
-from .jina_client import JinaEmbeddingsClient
 
 
 def make_embeddings_client(settings: Optional[Settings] = None) -> BaseEmbeddingsClient:
@@ -20,9 +19,6 @@ def make_embeddings_client(settings: Optional[Settings] = None) -> BaseEmbedding
         settings = get_settings()
 
     provider = settings.embeddings.provider
-
-    if provider == "jina":
-        return JinaEmbeddingsClient(api_key=settings.jina_api_key)
 
     if provider == "ollama":
         return OllamaEmbeddingsClient(settings)

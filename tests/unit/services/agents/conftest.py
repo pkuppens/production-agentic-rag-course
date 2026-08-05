@@ -50,8 +50,8 @@ def mock_ollama_client():
 
 
 @pytest.fixture
-def mock_jina_embeddings_client():
-    """Mock Jina embeddings client."""
+def mock_embeddings_client():
+    """Mock embeddings client."""
     client = Mock()
     client.embed_query = AsyncMock(return_value=[0.1] * 1024)
     client.embed_passages = AsyncMock(return_value=[[0.1] * 1024])
@@ -59,12 +59,12 @@ def mock_jina_embeddings_client():
 
 
 @pytest.fixture
-def test_context(mock_opensearch_client, mock_ollama_client, mock_jina_embeddings_client):
+def test_context(mock_opensearch_client, mock_ollama_client, mock_embeddings_client):
     """Runtime context for agent node tests."""
     return Context(
         ollama_client=mock_ollama_client,
         opensearch_client=mock_opensearch_client,
-        embeddings_client=mock_jina_embeddings_client,
+        embeddings_client=mock_embeddings_client,
         langfuse_tracer=None,
         trace=None,
         langfuse_enabled=False,

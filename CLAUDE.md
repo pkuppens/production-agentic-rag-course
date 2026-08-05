@@ -11,7 +11,7 @@ The "arXiv Paper Curator" — a learner-focused, production-style RAG system bui
 ```bash
 # Setup
 uv sync                          # Install Python dependencies
-cp .env.example .env             # Configure environment (edit for JINA_API_KEY, TELEGRAM__BOT_TOKEN, LANGFUSE__* as needed)
+cp .env.example .env             # Configure environment (edit for TELEGRAM__BOT_TOKEN, LANGFUSE__* as needed; embeddings default to local Ollama)
 codegraph init                   # Build the local CodeGraph index (.codegraph/, gitignored); `codegraph sync` after large edits
 
 # Run the full stack (FastAPI, Postgres, OpenSearch, Airflow, Ollama, Redis, Langfuse)
@@ -65,7 +65,7 @@ routers/  → services/  → repositories/ / db/  → models/
 
 ### Search: keyword-first, then hybrid
 
-Everything routes through a single hybrid OpenSearch index (`{index_name}-{chunk_index_suffix}`, see `OpenSearchSettings`). `src/services/opensearch/query_builder.py` builds BM25 and hybrid (RRF fusion of BM25 + vector) queries against `index_config_hybrid.py`'s mapping. `src/services/embeddings/` produces the vectors (Jina AI, 1024-dim) consumed by hybrid queries. `src/services/indexing/text_chunker.py` does section-aware chunking with overlap before indexing.
+Everything routes through a single hybrid OpenSearch index (`{index_name}-{chunk_index_suffix}`, see `OpenSearchSettings`). `src/services/opensearch/query_builder.py` builds BM25 and hybrid (RRF fusion of BM25 + vector) queries against `index_config_hybrid.py`'s mapping. `src/services/embeddings/` produces the vectors (local Ollama models, 1024-dim) consumed by hybrid queries. `src/services/indexing/text_chunker.py` does section-aware chunking with overlap before indexing.
 
 ### Agentic RAG (LangGraph)
 

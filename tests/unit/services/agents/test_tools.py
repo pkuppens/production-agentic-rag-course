@@ -6,11 +6,11 @@ from src.services.agents.tools import create_retriever_tool
 
 
 @pytest.mark.asyncio
-async def test_create_retriever_tool_basic(mock_opensearch_client, mock_jina_embeddings_client):
+async def test_create_retriever_tool_basic(mock_opensearch_client, mock_embeddings_client):
     """Test basic retriever tool creation and invocation."""
     tool = create_retriever_tool(
         opensearch_client=mock_opensearch_client,
-        embeddings_client=mock_jina_embeddings_client,
+        embeddings_client=mock_embeddings_client,
         top_k=2,
         use_hybrid=True,
     )
@@ -35,7 +35,7 @@ async def test_create_retriever_tool_basic(mock_opensearch_client, mock_jina_emb
     assert first_doc.metadata["score"] == 0.95
 
     # Verify embeddings were generated
-    mock_jina_embeddings_client.embed_query.assert_called_once_with("machine learning")
+    mock_embeddings_client.embed_query.assert_called_once_with("machine learning")
 
     # Verify search was called correctly
     mock_opensearch_client.search_unified.assert_called_once()
@@ -46,7 +46,7 @@ async def test_create_retriever_tool_basic(mock_opensearch_client, mock_jina_emb
 
 
 @pytest.mark.asyncio
-async def test_retriever_tool_empty_results(mock_opensearch_client, mock_jina_embeddings_client):
+async def test_retriever_tool_empty_results(mock_opensearch_client, mock_embeddings_client):
     """Test retriever tool with no results."""
     from unittest.mock import Mock
 
@@ -54,7 +54,7 @@ async def test_retriever_tool_empty_results(mock_opensearch_client, mock_jina_em
 
     tool = create_retriever_tool(
         opensearch_client=mock_opensearch_client,
-        embeddings_client=mock_jina_embeddings_client,
+        embeddings_client=mock_embeddings_client,
     )
 
     result = await tool.ainvoke({"query": "nonexistent topic"})
@@ -64,11 +64,11 @@ async def test_retriever_tool_empty_results(mock_opensearch_client, mock_jina_em
 
 
 @pytest.mark.asyncio
-async def test_retriever_tool_custom_top_k(mock_opensearch_client, mock_jina_embeddings_client):
+async def test_retriever_tool_custom_top_k(mock_opensearch_client, mock_embeddings_client):
     """Test retriever tool with custom top_k parameter."""
     tool = create_retriever_tool(
         opensearch_client=mock_opensearch_client,
-        embeddings_client=mock_jina_embeddings_client,
+        embeddings_client=mock_embeddings_client,
         top_k=5,
         use_hybrid=False,
     )
@@ -82,7 +82,7 @@ async def test_retriever_tool_custom_top_k(mock_opensearch_client, mock_jina_emb
 
 
 @pytest.mark.asyncio
-async def test_retriever_tool_metadata_fields(mock_opensearch_client, mock_jina_embeddings_client):
+async def test_retriever_tool_metadata_fields(mock_opensearch_client, mock_embeddings_client):
     """Test that all expected metadata fields are present."""
     from unittest.mock import Mock
 
@@ -103,7 +103,7 @@ async def test_retriever_tool_metadata_fields(mock_opensearch_client, mock_jina_
 
     tool = create_retriever_tool(
         opensearch_client=mock_opensearch_client,
-        embeddings_client=mock_jina_embeddings_client,
+        embeddings_client=mock_embeddings_client,
     )
 
     result = await tool.ainvoke({"query": "test"})

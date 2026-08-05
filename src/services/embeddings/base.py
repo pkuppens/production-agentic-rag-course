@@ -3,7 +3,7 @@ from typing import List
 
 
 class BaseEmbeddingsClient(ABC):
-    """Interface for embeddings providers (e.g. Jina, Ollama).
+    """Interface for embeddings providers.
 
     Callers should depend on this interface, not a concrete provider, so the
     embeddings provider can be swapped via configuration.

@@ -97,7 +97,7 @@ class OpenSearchSettings(BaseConfigSettings):
     max_text_size: int = 1000000
 
     # Vector search settings
-    vector_dimension: int = 1024  # Jina embeddings dimension
+    vector_dimension: int = 1024
     vector_space_type: str = "cosinesimil"  # cosinesimil, l2, innerproduct
 
     # Hybrid search settings
@@ -155,7 +155,7 @@ class EmbeddingsSettings(BaseConfigSettings):
         case_sensitive=False,
     )
 
-    provider: Literal["jina", "ollama"] = "jina"
+    provider: Literal["ollama"] = "ollama"
     ollama_embedding_model: Literal["nomic-embed-text", "mxbai-embed-large", "bge-m3"] = "bge-m3"
 
 
@@ -186,9 +186,6 @@ class Settings(BaseConfigSettings):
     ollama_host: str = "http://127.0.0.1:11434"
     ollama_model: str = "llama3.2:1b"
     ollama_timeout: int = 300
-
-    # Jina AI embeddings configuration
-    jina_api_key: str = ""
 
     arxiv: ArxivSettings = Field(default_factory=ArxivSettings)
     pdf_parser: PDFParserSettings = Field(default_factory=PDFParserSettings)
