@@ -179,20 +179,33 @@ def create_gradio_interface():
             inputs=[query_input, top_k, use_hybrid, model_choice, categories],
         )
 
-        # Handle submission
+        # Handle submission - disable button while a request is in flight to
+        # guard against accidental double-submits
         submit_btn.click(
+            fn=lambda: gr.update(interactive=False),
+            outputs=[submit_btn],
+        ).then(
             fn=stream_response,
             inputs=[query_input, top_k, use_hybrid, model_choice, categories],
             outputs=[response_output],
             show_progress=True,
+        ).then(
+            fn=lambda: gr.update(interactive=True),
+            outputs=[submit_btn],
         )
 
         # Handle Enter key
         query_input.submit(
+            fn=lambda: gr.update(interactive=False),
+            outputs=[submit_btn],
+        ).then(
             fn=stream_response,
             inputs=[query_input, top_k, use_hybrid, model_choice, categories],
             outputs=[response_output],
             show_progress=True,
+        ).then(
+            fn=lambda: gr.update(interactive=True),
+            outputs=[submit_btn],
         )
 
         gr.Markdown(
