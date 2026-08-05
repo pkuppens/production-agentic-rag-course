@@ -17,7 +17,7 @@ def create_retriever_tool(
     """Create a retriever tool that wraps OpenSearch service.
 
     :param opensearch_client: Existing OpenSearch service
-    :param embeddings_client: Existing Jina embeddings service
+    :param embeddings_client: Existing embeddings service
     :param top_k: Number of chunks to retrieve
     :param use_hybrid: Use hybrid search (BM25 + vector)
     :returns: LangChain tool for retrieving papers

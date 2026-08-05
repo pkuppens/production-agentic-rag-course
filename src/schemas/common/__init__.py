@@ -13,9 +13,6 @@ from src.schemas.arxiv.paper import (
 # Database schemas
 from src.schemas.database.config import PostgreSQLSettings
 
-# Embeddings schemas
-from src.schemas.embeddings.jina import JinaEmbeddingRequest, JinaEmbeddingResponse
-
 # Indexing schemas (including chunking)
 from src.schemas.indexing.models import ChunkMetadata, TextChunk
 
@@ -55,9 +52,6 @@ __all__ = [
     "TextChunk",
     # Database
     "PostgreSQLSettings",
-    # Embeddings
-    "JinaEmbeddingRequest",
-    "JinaEmbeddingResponse",
     # PDF Parser
     "ParserType",
     "PaperSection",

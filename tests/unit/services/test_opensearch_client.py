@@ -55,9 +55,9 @@ class TestValidateEmbeddingModelConsistency:
     def test_raises_when_different_label_present(self, client):
         client.client = MagicMock()
         client.client.indices.exists.return_value = True
-        client.client.search.return_value = make_aggregation_response([{"key": "jina:jina-embeddings-v3", "doc_count": 100}])
+        client.client.search.return_value = make_aggregation_response([{"key": "ollama:mxbai-embed-large", "doc_count": 100}])
 
-        with pytest.raises(ConfigurationError, match="jina:jina-embeddings-v3"):
+        with pytest.raises(ConfigurationError, match="ollama:mxbai-embed-large"):
             client.validate_embedding_model_consistency("ollama:bge-m3")
 
     def test_raises_when_mixed_labels_present(self, client):

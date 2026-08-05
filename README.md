@@ -91,7 +91,7 @@ cd production-agentic-rag-course
 cp .env.example .env
 # The .env file contains all necessary configuration for OpenSearch, 
 # arXiv API, and service connections. Defaults work out of the box.
-# You need to add Jina embeddings free api key and langfuse keys by week 4 (check the blogs)
+# Embeddings default to a local Ollama model - add langfuse keys by week 4 (check the blogs)
 
 # 3. Install dependencies
 uv sync
@@ -262,7 +262,7 @@ uv run jupyter notebook notebooks/week3/week3_opensearch.ipynb
 
 ### **🎯 Learning Objectives**
 - Section-based chunking with intelligent document segmentation
-- Production embeddings with Jina AI integration and fallback strategies
+- Production embeddings with local Ollama integration and fallback strategies
 - Hybrid search mastery using RRF fusion for keyword + semantic retrieval
 - Unified API design with single endpoint supporting multiple search modes
 - Performance analysis and trade-offs between search approaches
@@ -275,7 +275,7 @@ uv run jupyter notebook notebooks/week3/week3_opensearch.ipynb
 
 **Hybrid Search Infrastructure Components:**
 - **Text Chunker**: `src/services/indexing/text_chunker.py` - Section-aware chunking with overlap strategies
-- **Embeddings Service**: `src/services/embeddings/` - Production embedding pipeline with Jina AI
+- **Embeddings Service**: `src/services/embeddings/` - Production embedding pipeline with local Ollama models
 - **Hybrid Search API**: `src/routers/hybrid_search.py` - Unified search API supporting all modes
 - **Learning Materials**: `notebooks/week4/` - Complete hybrid search implementation guide
 
@@ -422,7 +422,7 @@ cp .env.example .env
 ```
 
 **Key Variables:**
-- `JINA_API_KEY` - Required for Week 4+ (hybrid search with embeddings)
+- `EMBEDDINGS__OLLAMA_EMBEDDING_MODEL` - Optional, defaults to `bge-m3` (Week 4+ hybrid search embeddings)
 - `TELEGRAM__BOT_TOKEN` - Required for Week 7 (Telegram bot integration)
 - `LANGFUSE__PUBLIC_KEY` & `LANGFUSE__SECRET_KEY` - Optional for Week 6 (monitoring)
 
@@ -440,7 +440,7 @@ cp .env.example .env
 | **PostgreSQL 16** | Paper metadata and content storage | ✅ Ready |
 | **OpenSearch 2.19** | Hybrid search engine (BM25 + Vector) | ✅ Ready |
 | **Apache Airflow 3.0** | Workflow automation | ✅ Ready |
-| **Jina AI** | Embedding generation (Week 4) | ✅ Ready |
+| **Ollama Embeddings** | Local embedding generation (Week 4) | ✅ Ready |
 | **Ollama** | Local LLM serving (Week 5) | ✅ Ready |
 | **Redis** | High-performance caching (Week 6) | ✅ Ready |
 | **Langfuse** | RAG pipeline observability (Week 6) | ✅ Ready |

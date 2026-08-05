@@ -554,7 +554,7 @@ Settings persist across sessions and are stored in-memory (for production, consi
 The Telegram bot integrates with all existing Week 1-6 services:
 
 1. **OpenSearch** - Hybrid search for relevant papers
-2. **Embeddings** (Ollama local by default, or Jina cloud) - Semantic search capabilities
+2. **Ollama Embeddings** - Semantic search capabilities (local, on-prem)
 3. **Ollama LLM** - Answer generation
 4. **Redis Cache** - 150-400x speedup for repeated queries
 5. **Langfuse** - Complete tracing of Telegram interactions
@@ -572,7 +572,7 @@ async def handle_message(update, context):
     5. Check cache (Redis)
     6. If cache hit → format and send
     7. If cache miss:
-        a. Generate embedding (Ollama or Jina, per EMBEDDINGS__PROVIDER)
+        a. Generate embedding (Ollama, local)
         b. Search papers (OpenSearch)
         c. Build prompt with context
         d. Generate answer (Ollama)
