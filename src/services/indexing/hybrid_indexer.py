@@ -1,7 +1,7 @@
 import logging
 from typing import Dict, List, Optional
 
-from src.services.embeddings.jina_client import JinaEmbeddingsClient
+from src.services.embeddings.base import BaseEmbeddingsClient
 from src.services.opensearch.client import OpenSearchClient
 
 from .text_chunker import TextChunker
@@ -18,7 +18,7 @@ class HybridIndexingService:
     3. Indexing chunks with embeddings into OpenSearch
     """
 
-    def __init__(self, chunker: TextChunker, embeddings_client: JinaEmbeddingsClient, opensearch_client: OpenSearchClient):
+    def __init__(self, chunker: TextChunker, embeddings_client: BaseEmbeddingsClient, opensearch_client: OpenSearchClient):
         """Initialize hybrid indexing service.
 
         :param chunker: Text chunking service

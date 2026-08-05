@@ -146,6 +146,19 @@ class RedisSettings(BaseConfigSettings):
     ttl_hours: int = 6  # Cache TTL in hours
 
 
+class EmbeddingsSettings(BaseConfigSettings):
+    model_config = SettingsConfigDict(
+        env_file=[".env", str(ENV_FILE_PATH)],
+        env_prefix="EMBEDDINGS__",
+        extra="ignore",
+        frozen=True,
+        case_sensitive=False,
+    )
+
+    provider: Literal["jina", "ollama"] = "jina"
+    ollama_embedding_model: Literal["nomic-embed-text", "mxbai-embed-large", "bge-m3"] = "bge-m3"
+
+
 class TelegramSettings(BaseConfigSettings):
     model_config = SettingsConfigDict(
         env_file=[".env", str(ENV_FILE_PATH)],
@@ -184,6 +197,7 @@ class Settings(BaseConfigSettings):
     langfuse: LangfuseSettings = Field(default_factory=LangfuseSettings)
     redis: RedisSettings = Field(default_factory=RedisSettings)
     telegram: TelegramSettings = Field(default_factory=TelegramSettings)
+    embeddings: EmbeddingsSettings = Field(default_factory=EmbeddingsSettings)
 
     @field_validator("postgres_database_url")
     @classmethod
