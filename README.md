@@ -84,10 +84,8 @@ By the end of this course, you'll have your own AI research assistant and the de
 
 ```bash
 # 1. Clone and setup
-git clone <repository-url> arxiv-paper-curator
-
-# original text missed arxiv-paper-curator argument, I think incorrectly because the repo name is different.
-cd arxiv-paper-curator
+git clone https://github.com/pkuppens/production-agentic-rag-course
+cd production-agentic-rag-course
 
 # 2. Configure environment (IMPORTANT!)
 cp .env.example .env
@@ -107,22 +105,21 @@ curl http://localhost:8000/api/v1/health
 
 ### **📚 Weekly Learning Path**
 
-| Week | Topic | Blog Post | Code Release |
-|------|-------|-----------|--------------|
-| **Week 0** | The Mother of AI project - 6 phases | [The Mother of AI project](https://jamwithai.substack.com/p/the-mother-of-ai-project) | - |
-| **Week 1** | Infrastructure Foundation | [The Infrastructure That Powers RAG Systems](https://jamwithai.substack.com/p/the-infrastructure-that-powers-rag) | [week1.0](https://github.com/jamwithai/arxiv-paper-curator/releases/tag/week1.0) |
-| **Week 2** | Data Ingestion Pipeline | [Building Data Ingestion Pipelines for RAG](https://jamwithai.substack.com/p/bringing-your-rag-system-to-life) | [week2.0](https://github.com/jamwithai/arxiv-paper-curator/releases/tag/week2.0) |
-| **Week 3** | OpenSearch ingestion & BM25 retrieval | [The Search Foundation Every RAG System Needs](https://jamwithai.substack.com/p/the-search-foundation-every-rag-system) | [week3.0](https://github.com/jamwithai/arxiv-paper-curator/releases/tag/week3.0) |
-| **Week 4** | **Chunking & Hybrid Search** | [The Chunking Strategy That Makes Hybrid Search Work](https://jamwithai.substack.com/p/chunking-strategies-and-hybrid-rag) | [week4.0](https://github.com/jamwithai/arxiv-paper-curator/releases/tag/week4.0) |
-| **Week 5** | **Complete RAG system** | [The Complete RAG System](https://jamwithai.substack.com/p/the-complete-rag-system) | [week5.0](https://github.com/jamwithai/arxiv-paper-curator/releases/tag/week5.0) |
-| **Week 6** | **Production monitoring & caching** | [Production-ready RAG: Monitoring & Caching](https://jamwithai.substack.com/p/production-ready-rag-monitoring-and) | [week6.0](https://github.com/jamwithai/arxiv-paper-curator/releases/tag/week6.0) |
-| **Week 7** | **Agentic RAG & Telegram Bot** | [Agentic RAG with LangGraph and Telegram](https://jamwithai.substack.com/p/agentic-rag-with-langgraph-and-telegram) | [week7.0](https://github.com/jamwithai/arxiv-paper-curator/releases/tag/week7.0) |
+| Week | Topic | Blog Post |
+|------|-------|-----------|
+| **Week 0** | The Mother of AI project - 6 phases | [The Mother of AI project](https://jamwithai.substack.com/p/the-mother-of-ai-project) |
+| **Week 1** | Infrastructure Foundation | [The Infrastructure That Powers RAG Systems](https://jamwithai.substack.com/p/the-infrastructure-that-powers-rag) |
+| **Week 2** | Data Ingestion Pipeline | [Building Data Ingestion Pipelines for RAG](https://jamwithai.substack.com/p/bringing-your-rag-system-to-life) |
+| **Week 3** | OpenSearch ingestion & BM25 retrieval | [The Search Foundation Every RAG System Needs](https://jamwithai.substack.com/p/the-search-foundation-every-rag-system) |
+| **Week 4** | **Chunking & Hybrid Search** | [The Chunking Strategy That Makes Hybrid Search Work](https://jamwithai.substack.com/p/chunking-strategies-and-hybrid-rag) |
+| **Week 5** | **Complete RAG system** | [The Complete RAG System](https://jamwithai.substack.com/p/the-complete-rag-system) |
+| **Week 6** | **Production monitoring & caching** | [Production-ready RAG: Monitoring & Caching](https://jamwithai.substack.com/p/production-ready-rag-monitoring-and) |
+| **Week 7** | **Agentic RAG & Telegram Bot** | [Agentic RAG with LangGraph and Telegram](https://jamwithai.substack.com/p/agentic-rag-with-langgraph-and-telegram) |
 
-**📥 Clone a specific week's release:**
+**📥 Clone this repo:**
 ```bash
-# Clone a specific week's code
-git clone --branch <WEEK_TAG> https://github.com/jamwithai/arxiv-paper-curator
-cd arxiv-paper-curator
+git clone https://github.com/pkuppens/production-agentic-rag-course
+cd production-agentic-rag-course
 uv sync
 docker compose down -v
 docker compose up --build -d
@@ -566,7 +563,7 @@ Sibling repo [on_prem_rag](https://github.com/pkuppens/on_prem_rag.git) is a sep
 
 ## Star History
 
-[![Star History Chart](https://api.star-history.com/svg?repos=jamwithai/production-agentic-rag-course&type=Date)](https://star-history.com/#jamwithai/production-agentic-rag-course&Date)
+[![Star History Chart](https://api.star-history.com/svg?repos=pkuppens/production-agentic-rag-course&type=Date)](https://star-history.com/#pkuppens/production-agentic-rag-course&Date)
 
 ---
 

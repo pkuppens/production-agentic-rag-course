@@ -12,8 +12,6 @@ RUN apt-get update && \
         build-essential \
         curl \
         git \
-        libgl1 \
-        libglib2.0-0 \
         libpq-dev \
         poppler-utils \
         procps \
@@ -23,7 +21,11 @@ RUN apt-get update && \
 # Create airflow user with UID/GID 50000 for cross-platform compatibility
 RUN groupadd -r -g 50000 airflow && useradd -r -u 50000 -g airflow -d ${AIRFLOW_HOME} -s /bin/bash airflow
 
-# Create airflow directories with proper ownership
+# Create airflow directories with proper ownership.
+# ${AIRFLOW_HOME}/dags is created here only so the image is runnable standalone
+# (e.g. `docker run` without compose); compose.yml bind-mounts the repo's
+# ./airflow/dags over it at runtime, so DAGs are edited on the host and never
+# baked into the image.
 RUN mkdir -p ${AIRFLOW_HOME} && \
     mkdir -p ${AIRFLOW_HOME}/dags && \
     mkdir -p ${AIRFLOW_HOME}/logs && \
@@ -37,9 +39,18 @@ RUN pip install --no-cache-dir \
     --constraint "${CONSTRAINT_URL}" \
     psycopg2-binary
 
-# Copy requirements and install project dependencies
+# Copy requirements and install project dependencies.
+#
+# docling pulls in rapidocr, which depends on the full `opencv-python` build.
+# That build requires libGL.so.1, a GUI library not present in this headless
+# image, causing `ImportError: libGL.so.1: cannot open shared object file` at
+# import time. Force-replace it with `opencv-python-headless`, which provides
+# the same `cv2` module without the GUI dependency, instead of adding libgl1
+# as a system package (see jamwithai/production-agentic-rag-course#31).
 COPY requirements-airflow.txt /tmp/requirements-airflow.txt
-RUN pip install --no-cache-dir -r /tmp/requirements-airflow.txt
+RUN pip install --no-cache-dir -r /tmp/requirements-airflow.txt && \
+    pip uninstall -y opencv-python opencv-python-headless && \
+    pip install --no-cache-dir opencv-python-headless
 
 # Copy and set up entrypoint script
 COPY entrypoint.sh /entrypoint.sh
