@@ -14,6 +14,7 @@ def make_agentic_rag_service(
     ollama_client: OllamaClient,
     embeddings_client: BaseEmbeddingsClient,
     langfuse_tracer: Optional[LangfuseTracer] = None,
+    model: Optional[str] = None,
     top_k: int = 3,
     use_hybrid: bool = True,
 ) -> AgenticRAGService:
@@ -25,6 +26,7 @@ def make_agentic_rag_service(
         ollama_client: Client for LLM generation
         embeddings_client: Client for embeddings
         langfuse_tracer: Optional Langfuse tracer for observability
+        model: LLM model to use for graph nodes (default: GraphConfig's default)
         top_k: Number of documents to retrieve (default: 3)
         use_hybrid: Use hybrid search (default: True)
 
@@ -32,10 +34,13 @@ def make_agentic_rag_service(
         Configured AgenticRAGService instance
     """
     # Create graph configuration with the provided parameters
-    graph_config = GraphConfig(
-        top_k=top_k,
-        use_hybrid=use_hybrid,
-    )
+    graph_config_kwargs: dict = {
+        "top_k": top_k,
+        "use_hybrid": use_hybrid,
+    }
+    if model is not None:
+        graph_config_kwargs["model"] = model
+    graph_config = GraphConfig(**graph_config_kwargs)
 
     return AgenticRAGService(
         opensearch_client=opensearch_client,
