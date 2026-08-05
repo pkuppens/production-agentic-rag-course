@@ -31,6 +31,10 @@ class JinaEmbeddingsClient(BaseEmbeddingsClient):
         self.client = httpx.AsyncClient(timeout=30.0)
         logger.info("Jina embeddings client initialized")
 
+    @property
+    def model_label(self) -> str:
+        return "jina:jina-embeddings-v3"
+
     async def embed_passages(self, texts: List[str], batch_size: int = 100) -> List[List[float]]:
         """Embed text passages for indexing.
 

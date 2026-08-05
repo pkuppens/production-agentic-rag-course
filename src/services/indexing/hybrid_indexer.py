@@ -29,6 +29,8 @@ class HybridIndexingService:
         self.embeddings_client = embeddings_client
         self.opensearch_client = opensearch_client
 
+        self.opensearch_client.validate_embedding_model_consistency(self.embeddings_client.model_label)
+
         logger.info("Hybrid indexing service initialized")
 
     async def index_paper(self, paper_data: Dict) -> Dict[str, int]:
@@ -86,7 +88,7 @@ class HybridIndexingService:
                     "start_char": chunk.metadata.start_char,
                     "end_char": chunk.metadata.end_char,
                     "section_title": chunk.metadata.section_title,
-                    "embedding_model": "jina-embeddings-v3",
+                    "embedding_model": self.embeddings_client.model_label,
                     # Denormalized paper metadata for efficient search
                     "title": paper_data.get("title", ""),
                     "authors": ", ".join(paper_data.get("authors", []))
