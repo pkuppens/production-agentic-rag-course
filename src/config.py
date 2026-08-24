@@ -172,6 +172,20 @@ class TelegramSettings(BaseConfigSettings):
     enabled: bool = False
 
 
+class SlackSettings(BaseConfigSettings):
+    model_config = SettingsConfigDict(
+        env_file=[".env", str(ENV_FILE_PATH)],
+        env_prefix="SLACK__",
+        extra="ignore",
+        frozen=True,
+        case_sensitive=False,
+    )
+
+    bot_token: str = ""
+    app_token: str = ""
+    enabled: bool = False
+
+
 class Settings(BaseConfigSettings):
     app_version: str = "0.1.0"
     debug: bool = True
@@ -194,6 +208,7 @@ class Settings(BaseConfigSettings):
     langfuse: LangfuseSettings = Field(default_factory=LangfuseSettings)
     redis: RedisSettings = Field(default_factory=RedisSettings)
     telegram: TelegramSettings = Field(default_factory=TelegramSettings)
+    slack: SlackSettings = Field(default_factory=SlackSettings)
     embeddings: EmbeddingsSettings = Field(default_factory=EmbeddingsSettings)
 
     @field_validator("postgres_database_url")
