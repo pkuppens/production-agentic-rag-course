@@ -32,6 +32,7 @@ async def client():
         patch("src.main.make_ollama_client") as mock_ollama,
         patch("src.main.make_cache_client") as mock_cache,
         patch("src.main.make_langfuse_tracer") as mock_langfuse,
+        patch("src.main.make_telegram_service") as mock_telegram,
         patch("src.routers.ping.OllamaClient") as mock_ping_ollama,
         patch("src.repositories.paper.PaperRepository.get_by_arxiv_id") as mock_get_by_id,
     ):
@@ -60,6 +61,11 @@ async def client():
         mock_cache.return_value = AsyncMock()
         mock_cache.return_value.find_cached_response = AsyncMock(return_value=None)
         mock_cache.return_value.store_response = AsyncMock(return_value=True)
+
+        # No Telegram bot in tests: main.py's lifespan would otherwise start a real
+        # `Application` against .env.test's placeholder token, which fails and then
+        # raises `RuntimeError: This Updater is not running!` at shutdown/teardown.
+        mock_telegram.return_value = None
 
         # ping.py constructs its own OllamaClient directly for the health check
         mock_ping_ollama.return_value.health_check = AsyncMock(return_value={"status": "healthy", "message": "mocked"})
