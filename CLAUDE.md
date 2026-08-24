@@ -89,10 +89,7 @@ Everything routes through a single hybrid OpenSearch index (`{index_name}-{chunk
 
 **Patch factories where they're imported, not where they're defined.** `tests/api/conftest.py`'s `client` fixture patches `src.main.make_x_client` / `src.routers.ping.OllamaClient`, not `src.services.x.factory.make_x_client`. `main.py`/`ping.py` do `from src.services.x.factory import make_x_client`, which binds its own name into the importing module's namespace — patching the origin module leaves that reference untouched and the real (network-calling) factory still runs. Getting this wrong doesn't fail loudly for clients that don't eagerly connect (arXiv, PDF parser, Ollama) but does for ones that do (Redis/cache at construction, OpenSearch via the `/health` check) — this previously made every `tests/api` run take ~5 minutes retrying dead connections instead of ~1 second.
 
-**Known gaps (found during #2, not fixed there):**
-- `tests/unit/services/agents/` (`test_agentic_rag.py`, `test_nodes.py`, `test_tools.py` — 22 tests) has no `conftest.py`; all error with `fixture 'mock_opensearch_client' not found`. Needs its own conftest providing mocks for the agent nodes' dependencies.
-- `tests/unit/services/test_pdf_parser.py::test_parse_pdf_success` / `test_parse_pdf_no_result` fail — the mocks still `await` `PDFParserService.parse_pdf`, which stopped being a coroutine after the async was removed from it.
-- `tests/api/routers/test_agentic_ask.py::test_ask_agentic_with_rewritten_query` / `test_ask_agentic_custom_model` fail on assertions that don't match current response shape/kwargs.
+`uv run pytest` is gated in pre-push (`.pre-commit-config.yaml`, `stages: [pre-push]`) and in CI (`.github/workflows/ci.yml`, lint → mypy → test). Run `make setup` (or `uv run pre-commit install --hook-type pre-commit --hook-type pre-push`) once per clone to install both hook stages.
 
 ## Agent skills
 

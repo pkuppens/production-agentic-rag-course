@@ -32,6 +32,7 @@ health: ## Check all services health
 # Development
 setup: ## Install Python dependencies
 	uv sync
+	uv run pre-commit install --hook-type pre-commit --hook-type pre-push
 
 format: ## Format code
 	uv run ruff format
