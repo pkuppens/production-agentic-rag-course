@@ -15,6 +15,7 @@ from src.services.langfuse.factory import make_langfuse_tracer
 from src.services.ollama.factory import make_ollama_client
 from src.services.opensearch.factory import make_opensearch_client
 from src.services.pdf_parser.factory import make_pdf_parser_service
+from src.services.slack.factory import make_slack_service
 from src.services.telegram.factory import make_telegram_service
 
 # Setup logging
@@ -97,6 +98,25 @@ async def lifespan(app: FastAPI):
     else:
         logger.info("Telegram bot not configured - skipping initialization")
 
+    # Initialize Slack bot (alternative message channel alongside Telegram)
+    slack_service = make_slack_service(
+        opensearch_client=app.state.opensearch_client,
+        embeddings_client=app.state.embeddings_service,
+        ollama_client=app.state.ollama_client,
+        cache_client=app.state.cache_client,
+        langfuse_tracer=app.state.langfuse_tracer,
+    )
+
+    if slack_service:
+        app.state.slack_service = slack_service
+        try:
+            await slack_service.start()
+            logger.info("Slack bot started successfully")
+        except Exception as e:
+            logger.error(f"Failed to start Slack bot: {e}")
+    else:
+        logger.info("Slack bot not configured - skipping initialization")
+
     logger.info("API ready")
     yield
 
@@ -104,6 +124,10 @@ async def lifespan(app: FastAPI):
     if hasattr(app.state, "telegram_service") and app.state.telegram_service:
         await app.state.telegram_service.stop()
         logger.info("Telegram bot stopped")
+
+    if hasattr(app.state, "slack_service") and app.state.slack_service:
+        await app.state.slack_service.stop()
+        logger.info("Slack bot stopped")
 
     database.teardown()
     logger.info("API shutdown complete")
