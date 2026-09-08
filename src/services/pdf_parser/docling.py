@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Optional
 
 import pypdfium2 as pdfium
+from docling.datamodel.accelerator_options import AcceleratorDevice, AcceleratorOptions
 from docling.datamodel.base_models import InputFormat
 from docling.datamodel.pipeline_options import PdfPipelineOptions
 from docling.document_converter import DocumentConverter, PdfFormatOption
@@ -10,6 +11,25 @@ from src.exceptions import PDFParsingException, PDFValidationError
 from src.schemas.pdf_parser.models import PaperFigure, PaperSection, PaperTable, ParserType, PdfContent
 
 logger = logging.getLogger(__name__)
+
+
+def _detect_accelerator_device() -> AcceleratorDevice:
+    """Pick CUDA when a working GPU is available, otherwise fall back to CPU.
+
+    Docling's own AcceleratorDevice.AUTO silently lands on CPU whenever the
+    installed torch build has no CUDA support (e.g. the `+cpu` wheel PyPI
+    serves by default on Windows), so we check explicitly and log the outcome.
+    """
+    try:
+        import torch
+
+        if torch.cuda.is_available():
+            logger.info(f"CUDA GPU detected: {torch.cuda.get_device_name(0)}")
+            return AcceleratorDevice.CUDA
+        logger.info("No CUDA-capable torch build/GPU detected, using CPU")
+    except ImportError:
+        logger.info("torch not importable, using CPU")
+    return AcceleratorDevice.CPU
 
 
 class DoclingParser:
@@ -27,6 +47,7 @@ class DoclingParser:
         pipeline_options = PdfPipelineOptions(
             do_table_structure=do_table_structure,
             do_ocr=do_ocr,  # Usually disabled for speed
+            accelerator_options=AcceleratorOptions(device=_detect_accelerator_device()),
         )
 
         self._converter = DocumentConverter(format_options={InputFormat.PDF: PdfFormatOption(pipeline_options=pipeline_options)})

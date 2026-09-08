@@ -91,13 +91,13 @@ class OpenSearchSettings(BaseConfigSettings):
         case_sensitive=False,
     )
 
-    host: str = "http://localhost:9200"
+    host: str = "http://127.0.0.1:9200"
     index_name: str = "arxiv-papers"
     chunk_index_suffix: str = "chunks"  # Creates single hybrid index: {index_name}-{suffix}
     max_text_size: int = 1000000
 
     # Vector search settings
-    vector_dimension: int = 1024  # Jina embeddings dimension
+    vector_dimension: int = 1024
     vector_space_type: str = "cosinesimil"  # cosinesimil, l2, innerproduct
 
     # Hybrid search settings
@@ -116,7 +116,7 @@ class LangfuseSettings(BaseConfigSettings):
 
     public_key: str = ""
     secret_key: str = ""
-    host: str = "http://localhost:3000"  # Self-hosted Langfuse URL
+    host: str = "http://127.0.0.1:3000"  # Self-hosted Langfuse URL
     enabled: bool = True
     flush_at: int = 15  # Number of events before flushing
     flush_interval: float = 1.0  # Seconds between flushes
@@ -134,7 +134,7 @@ class RedisSettings(BaseConfigSettings):
         case_sensitive=False,
     )
 
-    host: str = "localhost"
+    host: str = "127.0.0.1"
     port: int = 6379
     password: str = ""
     db: int = 0
@@ -144,6 +144,19 @@ class RedisSettings(BaseConfigSettings):
 
     # Cache settings
     ttl_hours: int = 6  # Cache TTL in hours
+
+
+class EmbeddingsSettings(BaseConfigSettings):
+    model_config = SettingsConfigDict(
+        env_file=[".env", str(ENV_FILE_PATH)],
+        env_prefix="EMBEDDINGS__",
+        extra="ignore",
+        frozen=True,
+        case_sensitive=False,
+    )
+
+    provider: Literal["ollama"] = "ollama"
+    ollama_embedding_model: Literal["nomic-embed-text", "mxbai-embed-large", "bge-m3"] = "bge-m3"
 
 
 class TelegramSettings(BaseConfigSettings):
@@ -159,23 +172,34 @@ class TelegramSettings(BaseConfigSettings):
     enabled: bool = False
 
 
+class SlackSettings(BaseConfigSettings):
+    model_config = SettingsConfigDict(
+        env_file=[".env", str(ENV_FILE_PATH)],
+        env_prefix="SLACK__",
+        extra="ignore",
+        frozen=True,
+        case_sensitive=False,
+    )
+
+    bot_token: str = ""
+    app_token: str = ""
+    enabled: bool = False
+
+
 class Settings(BaseConfigSettings):
     app_version: str = "0.1.0"
     debug: bool = True
     environment: Literal["development", "staging", "production"] = "development"
     service_name: str = "rag-api"
 
-    postgres_database_url: str = "postgresql://rag_user:rag_password@localhost:5432/rag_db"
+    postgres_database_url: str = "postgresql://rag_user:rag_password@127.0.0.1:5432/rag_db"
     postgres_echo_sql: bool = False
     postgres_pool_size: int = 20
     postgres_max_overflow: int = 0
 
-    ollama_host: str = "http://localhost:11434"
+    ollama_host: str = "http://127.0.0.1:11434"
     ollama_model: str = "llama3.2:1b"
     ollama_timeout: int = 300
-
-    # Jina AI embeddings configuration
-    jina_api_key: str = ""
 
     arxiv: ArxivSettings = Field(default_factory=ArxivSettings)
     pdf_parser: PDFParserSettings = Field(default_factory=PDFParserSettings)
@@ -184,6 +208,8 @@ class Settings(BaseConfigSettings):
     langfuse: LangfuseSettings = Field(default_factory=LangfuseSettings)
     redis: RedisSettings = Field(default_factory=RedisSettings)
     telegram: TelegramSettings = Field(default_factory=TelegramSettings)
+    slack: SlackSettings = Field(default_factory=SlackSettings)
+    embeddings: EmbeddingsSettings = Field(default_factory=EmbeddingsSettings)
 
     @field_validator("postgres_database_url")
     @classmethod

@@ -5,6 +5,7 @@ from typing import Any, Dict, List, Optional
 
 from opensearchpy import OpenSearch
 from src.config import Settings
+from src.exceptions import ConfigurationError
 
 from .index_config_hybrid import ARXIV_PAPERS_CHUNKS_MAPPING, HYBRID_RRF_PIPELINE
 from .query_builder import QueryBuilder
@@ -58,6 +59,52 @@ class OpenSearchClient:
         except Exception as e:
             logger.error(f"Error getting index stats: {e}")
             return {"index_name": self.index_name, "exists": False, "document_count": 0, "error": str(e)}
+
+    def get_indexed_embedding_models(self) -> Dict[str, int]:
+        """Get the distinct embedding-model labels currently present in the index.
+
+        :returns: Mapping of "provider:model" label to indexed chunk count.
+            Empty if the index doesn't exist or has no documents yet.
+        """
+        try:
+            if not self.client.indices.exists(index=self.index_name):
+                return {}
+
+            response = self.client.search(
+                index=self.index_name,
+                body={
+                    "size": 0,
+                    "aggs": {"embedding_models": {"terms": {"field": "embedding_model", "size": 50}}},
+                },
+            )
+            buckets = response["aggregations"]["embedding_models"]["buckets"]
+            return {bucket["key"]: bucket["doc_count"] for bucket in buckets}
+
+        except Exception as e:
+            logger.error(f"Error getting indexed embedding models: {e}")
+            return {}
+
+    def validate_embedding_model_consistency(self, expected_label: str) -> None:
+        """Fail fast if the index already contains chunks from a different embedding model.
+
+        Switching the configured embeddings provider/model without reindexing would
+        otherwise silently mix incompatible vectors in the same index, producing
+        wrong similarity scores rather than an obvious error.
+
+        :param expected_label: The "provider:model" label of the currently configured embeddings client
+        :raises ConfigurationError: If the index contains chunks labeled with a different embedding model
+        """
+        indexed_models = self.get_indexed_embedding_models()
+        other_models = {label: count for label, count in indexed_models.items() if label != expected_label}
+
+        if other_models:
+            raise ConfigurationError(
+                f"Index '{self.index_name}' contains chunks embedded with a different model than "
+                f"currently configured ({expected_label!r}): {other_models}. Mixing embeddings from "
+                "different models in the same index produces incorrect similarity scores. "
+                "Re-run the Airflow ingestion DAG with `replace_existing=True` (or otherwise clear "
+                "the index) after changing the embeddings provider/model."
+            )
 
     def setup_indices(self, force: bool = False) -> Dict[str, bool]:
         """Setup the hybrid search index and RRF pipeline."""

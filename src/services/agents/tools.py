@@ -2,8 +2,7 @@ import logging
 
 from langchain_core.documents import Document
 from langchain_core.tools import tool
-
-from src.services.embeddings.jina_client import JinaEmbeddingsClient
+from src.services.embeddings.base import BaseEmbeddingsClient
 from src.services.opensearch.client import OpenSearchClient
 
 logger = logging.getLogger(__name__)
@@ -11,14 +10,14 @@ logger = logging.getLogger(__name__)
 
 def create_retriever_tool(
     opensearch_client: OpenSearchClient,
-    embeddings_client: JinaEmbeddingsClient,
+    embeddings_client: BaseEmbeddingsClient,
     top_k: int = 3,
     use_hybrid: bool = True,
 ):
     """Create a retriever tool that wraps OpenSearch service.
 
     :param opensearch_client: Existing OpenSearch service
-    :param embeddings_client: Existing Jina embeddings service
+    :param embeddings_client: Existing embeddings service
     :param top_k: Number of chunks to retrieve
     :param use_hybrid: Use hybrid search (BM25 + vector)
     :returns: LangChain tool for retrieving papers

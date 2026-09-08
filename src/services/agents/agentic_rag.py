@@ -6,8 +6,7 @@ from langchain_core.messages import HumanMessage
 from langfuse.langchain import CallbackHandler
 from langgraph.graph import END, START, StateGraph
 from langgraph.prebuilt import ToolNode, tools_condition
-
-from src.services.embeddings.jina_client import JinaEmbeddingsClient
+from src.services.embeddings.base import BaseEmbeddingsClient
 from src.services.langfuse.client import LangfuseTracer
 from src.services.ollama.client import OllamaClient
 from src.services.opensearch.client import OpenSearchClient
@@ -30,7 +29,7 @@ logger = logging.getLogger(__name__)
 
 
 class AgenticRAGService:
-    """Agentic RAG service 
+    """Agentic RAG service
 
     This implementation uses:
     - context_schema for dependency injection
@@ -43,7 +42,7 @@ class AgenticRAGService:
         self,
         opensearch_client: OpenSearchClient,
         ollama_client: OllamaClient,
-        embeddings_client: JinaEmbeddingsClient,
+        embeddings_client: BaseEmbeddingsClient,
         langfuse_tracer: Optional[LangfuseTracer] = None,
         graph_config: Optional[GraphConfig] = None,
     ):
@@ -410,8 +409,7 @@ class AgenticRAGService:
             logger.error(f"Failed to generate visualization - missing dependencies: {e}")
             logger.error("Install with: pip install pygraphviz or apt-get install graphviz")
             raise ImportError(
-                "Graph visualization requires pygraphviz. "
-                "Install with: pip install pygraphviz (requires graphviz system package)"
+                "Graph visualization requires pygraphviz. Install with: pip install pygraphviz (requires graphviz system package)"
             ) from e
         except Exception as e:
             logger.error(f"Failed to generate graph visualization: {e}")

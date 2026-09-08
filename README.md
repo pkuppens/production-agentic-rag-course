@@ -84,14 +84,14 @@ By the end of this course, you'll have your own AI research assistant and the de
 
 ```bash
 # 1. Clone and setup
-git clone <repository-url>
-cd arxiv-paper-curator
+git clone https://github.com/pkuppens/production-agentic-rag-course
+cd production-agentic-rag-course
 
 # 2. Configure environment (IMPORTANT!)
 cp .env.example .env
 # The .env file contains all necessary configuration for OpenSearch, 
 # arXiv API, and service connections. Defaults work out of the box.
-# You need to add Jina embeddings free api key and langfuse keys (check the blogs)
+# Embeddings default to a local Ollama model - add langfuse keys by week 4 (check the blogs)
 
 # 3. Install dependencies
 uv sync
@@ -105,22 +105,21 @@ curl http://localhost:8000/api/v1/health
 
 ### **📚 Weekly Learning Path**
 
-| Week | Topic | Blog Post | Code Release |
-|------|-------|-----------|--------------|
-| **Week 0** | The Mother of AI project - 6 phases | [The Mother of AI project](https://jamwithai.substack.com/p/the-mother-of-ai-project) | - |
-| **Week 1** | Infrastructure Foundation | [The Infrastructure That Powers RAG Systems](https://jamwithai.substack.com/p/the-infrastructure-that-powers-rag) | [week1.0](https://github.com/jamwithai/arxiv-paper-curator/releases/tag/week1.0) |
-| **Week 2** | Data Ingestion Pipeline | [Building Data Ingestion Pipelines for RAG](https://jamwithai.substack.com/p/bringing-your-rag-system-to-life) | [week2.0](https://github.com/jamwithai/arxiv-paper-curator/releases/tag/week2.0) |
-| **Week 3** | OpenSearch ingestion & BM25 retrieval | [The Search Foundation Every RAG System Needs](https://jamwithai.substack.com/p/the-search-foundation-every-rag-system) | [week3.0](https://github.com/jamwithai/arxiv-paper-curator/releases/tag/week3.0) |
-| **Week 4** | **Chunking & Hybrid Search** | [The Chunking Strategy That Makes Hybrid Search Work](https://jamwithai.substack.com/p/chunking-strategies-and-hybrid-rag) | [week4.0](https://github.com/jamwithai/arxiv-paper-curator/releases/tag/week4.0) |
-| **Week 5** | **Complete RAG system** | [The Complete RAG System](https://jamwithai.substack.com/p/the-complete-rag-system) | [week5.0](https://github.com/jamwithai/arxiv-paper-curator/releases/tag/week5.0) |
-| **Week 6** | **Production monitoring & caching** | [Production-ready RAG: Monitoring & Caching](https://jamwithai.substack.com/p/production-ready-rag-monitoring-and) | [week6.0](https://github.com/jamwithai/arxiv-paper-curator/releases/tag/week6.0) |
-| **Week 7** | **Agentic RAG & Telegram Bot** | [Agentic RAG with LangGraph and Telegram](https://jamwithai.substack.com/p/agentic-rag-with-langgraph-and-telegram) | [week7.0](https://github.com/jamwithai/arxiv-paper-curator/releases/tag/week7.0) |
+| Week | Topic | Blog Post |
+|------|-------|-----------|
+| **Week 0** | The Mother of AI project - 6 phases | [The Mother of AI project](https://jamwithai.substack.com/p/the-mother-of-ai-project) |
+| **Week 1** | Infrastructure Foundation | [The Infrastructure That Powers RAG Systems](https://jamwithai.substack.com/p/the-infrastructure-that-powers-rag) |
+| **Week 2** | Data Ingestion Pipeline | [Building Data Ingestion Pipelines for RAG](https://jamwithai.substack.com/p/bringing-your-rag-system-to-life) |
+| **Week 3** | OpenSearch ingestion & BM25 retrieval | [The Search Foundation Every RAG System Needs](https://jamwithai.substack.com/p/the-search-foundation-every-rag-system) |
+| **Week 4** | **Chunking & Hybrid Search** | [The Chunking Strategy That Makes Hybrid Search Work](https://jamwithai.substack.com/p/chunking-strategies-and-hybrid-rag) |
+| **Week 5** | **Complete RAG system** | [The Complete RAG System](https://jamwithai.substack.com/p/the-complete-rag-system) |
+| **Week 6** | **Production monitoring & caching** | [Production-ready RAG: Monitoring & Caching](https://jamwithai.substack.com/p/production-ready-rag-monitoring-and) |
+| **Week 7** | **Agentic RAG & Telegram Bot** | [Agentic RAG with LangGraph and Telegram](https://jamwithai.substack.com/p/agentic-rag-with-langgraph-and-telegram) |
 
-**📥 Clone a specific week's release:**
+**📥 Clone this repo:**
 ```bash
-# Clone a specific week's code
-git clone --branch <WEEK_TAG> https://github.com/jamwithai/arxiv-paper-curator
-cd arxiv-paper-curator
+git clone https://github.com/pkuppens/production-agentic-rag-course
+cd production-agentic-rag-course
 uv sync
 docker compose down -v
 docker compose up --build -d
@@ -263,7 +262,7 @@ uv run jupyter notebook notebooks/week3/week3_opensearch.ipynb
 
 ### **🎯 Learning Objectives**
 - Section-based chunking with intelligent document segmentation
-- Production embeddings with Jina AI integration and fallback strategies
+- Production embeddings with local Ollama integration and fallback strategies
 - Hybrid search mastery using RRF fusion for keyword + semantic retrieval
 - Unified API design with single endpoint supporting multiple search modes
 - Performance analysis and trade-offs between search approaches
@@ -276,7 +275,7 @@ uv run jupyter notebook notebooks/week3/week3_opensearch.ipynb
 
 **Hybrid Search Infrastructure Components:**
 - **Text Chunker**: `src/services/indexing/text_chunker.py` - Section-aware chunking with overlap strategies
-- **Embeddings Service**: `src/services/embeddings/` - Production embedding pipeline with Jina AI
+- **Embeddings Service**: `src/services/embeddings/` - Production embedding pipeline with local Ollama models
 - **Hybrid Search API**: `src/routers/hybrid_search.py` - Unified search API supporting all modes
 - **Learning Materials**: `notebooks/week4/` - Complete hybrid search implementation guide
 
@@ -423,7 +422,7 @@ cp .env.example .env
 ```
 
 **Key Variables:**
-- `JINA_API_KEY` - Required for Week 4+ (hybrid search with embeddings)
+- `EMBEDDINGS__OLLAMA_EMBEDDING_MODEL` - Optional, defaults to `bge-m3` (Week 4+ hybrid search embeddings)
 - `TELEGRAM__BOT_TOKEN` - Required for Week 7 (Telegram bot integration)
 - `LANGFUSE__PUBLIC_KEY` & `LANGFUSE__SECRET_KEY` - Optional for Week 6 (monitoring)
 
@@ -441,7 +440,7 @@ cp .env.example .env
 | **PostgreSQL 16** | Paper metadata and content storage | ✅ Ready |
 | **OpenSearch 2.19** | Hybrid search engine (BM25 + Vector) | ✅ Ready |
 | **Apache Airflow 3.0** | Workflow automation | ✅ Ready |
-| **Jina AI** | Embedding generation (Week 4) | ✅ Ready |
+| **Ollama Embeddings** | Local embedding generation (Week 4) | ✅ Ready |
 | **Ollama** | Local LLM serving (Week 5) | ✅ Ready |
 | **Redis** | High-performance caching (Week 6) | ✅ Ready |
 | **Langfuse** | RAG pipeline observability (Week 6) | ✅ Ready |
@@ -556,9 +555,15 @@ uv run pytest                 # Run tests
 
 ---
 
+## Related Projects
+
+Sibling repo [on_prem_rag](https://github.com/pkuppens/on_prem_rag.git) is a separate on-premises RAG system (FastAPI, ChromaDB, Ollama) built by the same author, actively adopting techniques and lessons learned from this course. Improvements proven out here may be ported there; the reverse is not expected.
+
+---
+
 ## Star History
 
-[![Star History Chart](https://api.star-history.com/svg?repos=jamwithai/production-agentic-rag-course&type=Date)](https://star-history.com/#jamwithai/production-agentic-rag-course&Date)
+[![Star History Chart](https://api.star-history.com/svg?repos=pkuppens/production-agentic-rag-course&type=Date)](https://star-history.com/#pkuppens/production-agentic-rag-course&Date)
 
 ---
 

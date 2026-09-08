@@ -128,6 +128,56 @@ class LangfuseTracer:
         # The actual trace will be created by the handler
         yield (None, handler)
 
+    @contextmanager
+    def trace_rag_request(
+        self,
+        query: str,
+        user_id: Optional[str] = None,
+        session_id: Optional[str] = None,
+        metadata: Optional[Dict[str, Any]] = None,
+    ):
+        """
+        Start a top-level span for a RAG request, used as the root for child spans.
+
+        Used by RAGTracer (src/services/langfuse/tracer.py) for the non-agentic
+        /ask and /stream endpoints.
+        """
+        if not self.client:
+            yield None
+            return
+
+        span = None
+        try:
+            span = self.client.start_span(
+                name="rag_request",
+                input={"query": query},
+                metadata={**(metadata or {}), "user_id": user_id, "session_id": session_id},
+            )
+        except Exception as e:
+            logger.error(f"Error creating RAG request trace: {e}")
+
+        try:
+            yield span
+        finally:
+            if span:
+                span.end()
+
+    def create_span(self, trace, name: str, input_data: Optional[Any] = None):
+        """
+        Create a child span, nested under `trace` if given (root span from trace_rag_request).
+
+        Used by RAGTracer for embedding/search/prompt/generation sub-spans.
+        """
+        if not self.client:
+            return None
+
+        parent = trace if trace is not None else self.client
+        try:
+            return parent.start_span(name=name, input=input_data)
+        except Exception as e:
+            logger.error(f"Error creating span '{name}': {e}")
+            return None
+
     def get_trace_id(self, trace=None) -> Optional[str]:
         """
         Get the current trace ID from Langfuse context.

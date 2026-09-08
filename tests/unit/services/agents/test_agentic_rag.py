@@ -1,16 +1,16 @@
 """Tests for AgenticRAGService using LangGraph 2.0 Runtime pattern."""
 
-import pytest
 from unittest.mock import AsyncMock, Mock
-from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 
+import pytest
+from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 from src.services.agents.agentic_rag import AgenticRAGService
 from src.services.agents.config import GraphConfig
 from src.services.agents.models import GuardrailScoring
 
 
 @pytest.fixture
-def test_service(mock_opensearch_client, mock_ollama_client, mock_jina_embeddings_client):
+def test_service(mock_opensearch_client, mock_ollama_client, mock_embeddings_client):
     """Create AgenticRAGService with mocked dependencies."""
     config = GraphConfig(
         model="llama3.2:1b",
@@ -23,7 +23,7 @@ def test_service(mock_opensearch_client, mock_ollama_client, mock_jina_embedding
     return AgenticRAGService(
         opensearch_client=mock_opensearch_client,
         ollama_client=mock_ollama_client,
-        embeddings_client=mock_jina_embeddings_client,
+        embeddings_client=mock_embeddings_client,
         langfuse_tracer=None,
         graph_config=config,
     )
