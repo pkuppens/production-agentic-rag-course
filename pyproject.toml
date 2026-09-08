@@ -18,12 +18,20 @@ dependencies = [
     "python-dateutil>=2.9.0.post0",
     "sentence-transformers>=5.1.0",
     "gradio>=4.0.0",
-    "langfuse>=2.0.0,<3.0.0",
+    "langfuse>=3.0.0",
     "redis>=6.4.0",
     "transformers>=4.50.0",
     "torch>=2.6.0",
     "pillow>=10.0.0",
     "pypdfium2>=4.30.0",
+    "python-telegram-bot>=21.0,<22.0",
+    "slack-bolt>=1.20.0,<2.0",
+    "langgraph>=0.2.0",
+    "langchain>=0.3.0",
+    "langchain-core>=0.3.0",
+    "langchain-community>=0.3.0",
+    "langchain-ollama>=0.3.0",
+    "huggingface-hub[hf-xet]>=0.34.4",
 ]
 readme = "README.md"
 
@@ -46,6 +54,9 @@ dev = [
     "testcontainers>=4.10.0",
     "types-sqlalchemy>=1.4.53.38",
 ]
+viz = [
+    "grandalf>=0.8",
+]
 
 [tool.ruff]
 line-length = 130
@@ -63,5 +74,15 @@ env_files = ".env.test"
 [tool.mypy]
 explicit_package_bases = true
 ignore_errors = true
+
+[tool.uv.sources]
+torch = [
+    { index = "pytorch-cu130", marker = "sys_platform == 'win32'" },
+]
+
+[[tool.uv.index]]
+name = "pytorch-cu130"
+url = "https://download.pytorch.org/whl/cu130"
+explicit = true
 
 

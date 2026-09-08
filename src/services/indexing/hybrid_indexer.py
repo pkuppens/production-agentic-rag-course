@@ -1,7 +1,7 @@
 import logging
 from typing import Dict, List, Optional
 
-from src.services.embeddings.jina_client import JinaEmbeddingsClient
+from src.services.embeddings.base import BaseEmbeddingsClient
 from src.services.opensearch.client import OpenSearchClient
 
 from .text_chunker import TextChunker
@@ -18,7 +18,7 @@ class HybridIndexingService:
     3. Indexing chunks with embeddings into OpenSearch
     """
 
-    def __init__(self, chunker: TextChunker, embeddings_client: JinaEmbeddingsClient, opensearch_client: OpenSearchClient):
+    def __init__(self, chunker: TextChunker, embeddings_client: BaseEmbeddingsClient, opensearch_client: OpenSearchClient):
         """Initialize hybrid indexing service.
 
         :param chunker: Text chunking service
@@ -28,6 +28,8 @@ class HybridIndexingService:
         self.chunker = chunker
         self.embeddings_client = embeddings_client
         self.opensearch_client = opensearch_client
+
+        self.opensearch_client.validate_embedding_model_consistency(self.embeddings_client.model_label)
 
         logger.info("Hybrid indexing service initialized")
 
@@ -86,7 +88,7 @@ class HybridIndexingService:
                     "start_char": chunk.metadata.start_char,
                     "end_char": chunk.metadata.end_char,
                     "section_title": chunk.metadata.section_title,
-                    "embedding_model": "jina-embeddings-v3",
+                    "embedding_model": self.embeddings_client.model_label,
                     # Denormalized paper metadata for efficient search
                     "title": paper_data.get("title", ""),
                     "authors": ", ".join(paper_data.get("authors", []))

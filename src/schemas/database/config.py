@@ -6,7 +6,7 @@ class PostgreSQLSettings(BaseSettings):
     """PostgreSQL configuration settings."""
 
     database_url: str = Field(
-        default="postgresql://rag_user:rag_password@localhost:5432/rag_db", description="PostgreSQL database URL"
+        default="postgresql://rag_user:rag_password@127.0.0.1:5432/rag_db", description="PostgreSQL database URL"
     )
     echo_sql: bool = Field(default=False, description="Enable SQL query logging")
     pool_size: int = Field(default=20, description="Database connection pool size")

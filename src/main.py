@@ -6,7 +6,7 @@ import uvicorn
 from fastapi import FastAPI
 from src.config import get_settings
 from src.db.factory import make_database
-from src.routers import hybrid_search, ping
+from src.routers import agentic_ask, hybrid_search, ping
 from src.routers.ask import ask_router, stream_router
 from src.services.arxiv.factory import make_arxiv_client
 from src.services.cache.factory import make_cache_client
@@ -15,6 +15,8 @@ from src.services.langfuse.factory import make_langfuse_tracer
 from src.services.ollama.factory import make_ollama_client
 from src.services.opensearch.factory import make_opensearch_client
 from src.services.pdf_parser.factory import make_pdf_parser_service
+from src.services.slack.factory import make_slack_service
+from src.services.telegram.factory import make_telegram_service
 
 # Setup logging
 logging.basicConfig(
@@ -66,15 +68,67 @@ async def lifespan(app: FastAPI):
     app.state.arxiv_client = make_arxiv_client()
     app.state.pdf_parser = make_pdf_parser_service()
     app.state.embeddings_service = make_embeddings_service()
+    if opensearch_client.health_check():
+        opensearch_client.validate_embedding_model_consistency(app.state.embeddings_service.model_label)
     app.state.ollama_client = make_ollama_client()
     app.state.langfuse_tracer = make_langfuse_tracer()
-    app.state.cache_client = make_cache_client(settings)
+    try:
+        app.state.cache_client = make_cache_client(settings)
+    except Exception as e:
+        logger.warning(f"Redis unavailable at startup - caching disabled: {e}")
+        app.state.cache_client = None
     logger.info("Services initialized: arXiv API client, PDF parser, OpenSearch, Embeddings, Ollama, Langfuse, Cache")
+
+    # Initialize Telegram bot (Week 7)
+    telegram_service = make_telegram_service(
+        opensearch_client=app.state.opensearch_client,
+        embeddings_client=app.state.embeddings_service,
+        ollama_client=app.state.ollama_client,
+        cache_client=app.state.cache_client,
+        langfuse_tracer=app.state.langfuse_tracer,
+    )
+
+    if telegram_service:
+        app.state.telegram_service = telegram_service
+        try:
+            await telegram_service.start()
+            logger.info("Telegram bot started successfully")
+        except Exception as e:
+            logger.error(f"Failed to start Telegram bot: {e}")
+    else:
+        logger.info("Telegram bot not configured - skipping initialization")
+
+    # Initialize Slack bot (alternative message channel alongside Telegram)
+    slack_service = make_slack_service(
+        opensearch_client=app.state.opensearch_client,
+        embeddings_client=app.state.embeddings_service,
+        ollama_client=app.state.ollama_client,
+        cache_client=app.state.cache_client,
+        langfuse_tracer=app.state.langfuse_tracer,
+    )
+
+    if slack_service:
+        app.state.slack_service = slack_service
+        try:
+            await slack_service.start()
+            logger.info("Slack bot started successfully")
+        except Exception as e:
+            logger.error(f"Failed to start Slack bot: {e}")
+    else:
+        logger.info("Slack bot not configured - skipping initialization")
 
     logger.info("API ready")
     yield
 
     # Cleanup
+    if hasattr(app.state, "telegram_service") and app.state.telegram_service:
+        await app.state.telegram_service.stop()
+        logger.info("Telegram bot stopped")
+
+    if hasattr(app.state, "slack_service") and app.state.slack_service:
+        await app.state.slack_service.stop()
+        logger.info("Slack bot stopped")
+
     database.teardown()
     logger.info("API shutdown complete")
 
@@ -91,6 +145,7 @@ app.include_router(ping.router, prefix="/api/v1")  # Health check endpoint
 app.include_router(hybrid_search.router, prefix="/api/v1")  # Search chunks with BM25/hybrid
 app.include_router(ask_router, prefix="/api/v1")  # RAG question answering with LLM
 app.include_router(stream_router, prefix="/api/v1")  # Streaming RAG responses
+app.include_router(agentic_ask.router)  # Agentic RAG with intelligent retrieval
 
 
 if __name__ == "__main__":

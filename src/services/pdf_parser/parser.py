@@ -67,7 +67,10 @@ class PDFParserService:
             raise PDFValidationError(f"PDF file not found: {pdf_path}")
 
         try:
-            result = await self.parser.parse_pdf(pdf_path)
+            if self.parser_type == "deepseek":
+                result = await self.parser.parse_pdf(pdf_path)
+            else:
+                result = self.parser.parse_pdf(pdf_path)
             if result:
                 logger.info(f"Parsed {pdf_path.name} using {self.parser_type}")
                 return result

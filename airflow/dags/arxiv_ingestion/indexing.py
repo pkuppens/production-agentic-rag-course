@@ -42,7 +42,7 @@ def index_papers_hybrid(**context):
     This task:
     1. Fetches recently processed papers from PostgreSQL
     2. Chunks them into overlapping segments (600 words, 100 overlap)
-    3. Generates embeddings using Jina AI
+    3. Generates embeddings using the configured provider (Ollama)
     4. Indexes chunks with embeddings into OpenSearch
     """
     try:

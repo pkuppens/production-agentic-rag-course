@@ -28,7 +28,7 @@ def test_settings_opensearch_defaults():
     """Test OpenSearch default configuration."""
     settings = Settings()
 
-    assert settings.opensearch.host == "http://localhost:9200"
+    assert settings.opensearch.host == "http://127.0.0.1:9200"
     assert settings.opensearch.index_name == "arxiv-papers"
 
 
@@ -38,4 +38,4 @@ def test_settings_ollama_defaults():
 
     # In Docker environment, this should be ollama service host
     expected_host = "http://ollama:11434" if "OLLAMA_HOST" not in os.environ else settings.ollama_host
-    assert settings.ollama_host in ["http://localhost:11434", "http://ollama:11434"]
+    assert settings.ollama_host in ["http://127.0.0.1:11434", "http://ollama:11434"]
