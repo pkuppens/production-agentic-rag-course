@@ -92,8 +92,8 @@ class TestPDFParserService:
 
     def test_pdf_parser_service_initialization(self, pdf_parser_service):
         """Test PDFParserService initialization."""
-        assert isinstance(pdf_parser_service.docling_parser, DoclingParser)
-        assert pdf_parser_service.docling_parser.max_pages == 20
+        assert isinstance(pdf_parser_service.parser, DoclingParser)
+        assert pdf_parser_service.parser.max_pages == 20
 
     @pytest.mark.asyncio
     async def test_parse_pdf_file_not_found(self, pdf_parser_service):
@@ -128,7 +128,7 @@ class TestPDFParserService:
         with pytest.raises(PDFParsingException) as exc_info:
             await pdf_parser_service.parse_pdf(valid_pdf_path)
 
-        assert "Docling parsing returned no result" in str(exc_info.value)
+        assert "docling parsing returned no result" in str(exc_info.value)
 
     @patch("src.services.pdf_parser.parser.DoclingParser.parse_pdf")
     @pytest.mark.asyncio
@@ -139,13 +139,13 @@ class TestPDFParserService:
         with pytest.raises(PDFParsingException) as exc_info:
             await pdf_parser_service.parse_pdf(valid_pdf_path)
 
-        assert "Docling parsing error" in str(exc_info.value)
+        assert "docling parsing error" in str(exc_info.value)
 
     def test_factory_creates_service(self):
         """Test that factory creates PDFParserService instance."""
         service = make_pdf_parser_service()
         assert isinstance(service, PDFParserService)
-        assert isinstance(service.docling_parser, DoclingParser)
+        assert isinstance(service.parser, DoclingParser)
 
     def test_factory_caching(self):
         """Test that factory uses caching."""

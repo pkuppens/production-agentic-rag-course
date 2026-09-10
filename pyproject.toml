@@ -70,6 +70,7 @@ lint.select = [
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 env_files = ".env.test"
+testpaths = ["tests/unit", "tests/api", "tests/integration"]
 
 [tool.mypy]
 explicit_package_bases = true

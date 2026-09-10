@@ -5,9 +5,9 @@ from typing import Optional
 
 import pypdfium2 as pdfium
 import torch
-from transformers import AutoModel, AutoTokenizer
 from src.exceptions import PDFParsingException, PDFValidationError
 from src.schemas.pdf_parser.models import PaperSection, ParserType, PdfContent
+from transformers import AutoModel, AutoTokenizer
 
 logger = logging.getLogger(__name__)
 
@@ -58,15 +58,10 @@ class DeepSeekParser:
             logger.info(f"Loading DeepSeek OCR model: {self.model_name}")
 
             # Official transformers usage from docs
-            self._tokenizer = AutoTokenizer.from_pretrained(
-                self.model_name,
-                trust_remote_code=True
-            )
+            self._tokenizer = AutoTokenizer.from_pretrained(self.model_name, trust_remote_code=True)
 
             self._model = AutoModel.from_pretrained(
-                self.model_name,
-                _attn_implementation='flash_attention_2',
-                trust_remote_code=True
+                self.model_name, _attn_implementation="flash_attention_2", trust_remote_code=True
             )
 
             # Move to GPU (as per docs: model.eval().cuda().to(torch.bfloat16))
@@ -113,9 +108,7 @@ class DeepSeekParser:
             pdf_doc.close()
 
             if actual_pages > self.max_pages:
-                logger.warning(
-                    f"PDF has {actual_pages} pages, exceeding limit of {self.max_pages} pages"
-                )
+                logger.warning(f"PDF has {actual_pages} pages, exceeding limit of {self.max_pages} pages")
                 raise PDFValidationError(f"PDF has too many pages: {actual_pages} > {self.max_pages}")
 
             return True
@@ -199,32 +192,24 @@ class DeepSeekParser:
 
         # Split by headers (# or ##)
         # Match lines starting with # or ##
-        lines = markdown_text.split('\n')
+        lines = markdown_text.split("\n")
         current_section = {"title": "Content", "content": ""}
 
         for line in lines:
             # Check if line is a header
-            header_match = re.match(r'^(#{1,6})\s+(.+)$', line)
+            header_match = re.match(r"^(#{1,6})\s+(.+)$", line)
 
             if header_match:
                 # Save previous section if it has content
                 if current_section["content"].strip():
                     sections.append(
-                        PaperSection(
-                            title=current_section["title"],
-                            content=current_section["content"].strip(),
-                            level=1
-                        )
+                        PaperSection(title=current_section["title"], content=current_section["content"].strip(), level=1)
                     )
 
                 # Start new section
                 header_level = len(header_match.group(1))
                 section_title = header_match.group(2).strip()
-                current_section = {
-                    "title": section_title,
-                    "content": "",
-                    "level": header_level
-                }
+                current_section = {"title": section_title, "content": "", "level": header_level}
             else:
                 # Add content to current section
                 if line.strip():
@@ -236,7 +221,7 @@ class DeepSeekParser:
                 PaperSection(
                     title=current_section["title"],
                     content=current_section["content"].strip(),
-                    level=current_section.get("level", 1)
+                    level=current_section.get("level", 1),
                 )
             )
 
@@ -248,8 +233,8 @@ class DeepSeekParser:
         :param pdf_path: Path to PDF file
         :returns: PdfContent object or None if parsing failed
         """
-        import tempfile
         import shutil
+        import tempfile
 
         temp_dir = None
         try:

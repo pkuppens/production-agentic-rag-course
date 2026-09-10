@@ -9,11 +9,11 @@ from pathlib import Path
 from src.services.pdf_parser.docling import DoclingParser
 
 
-async def test_docling_only(pdf_path: Path):
+async def run_docling(pdf_path: Path):
     """Test Docling parser and show section extraction."""
-    print(f"\n{'='*80}")
+    print(f"\n{'=' * 80}")
     print(f"Testing Docling Parser on: {pdf_path.name}")
-    print(f"{'='*80}\n")
+    print(f"{'=' * 80}\n")
 
     parser = DoclingParser(
         max_pages=30,
@@ -33,7 +33,7 @@ async def test_docling_only(pdf_path: Path):
             print(f"  - Parser used: {result.parser_used}")
 
             print(f"\n📑 Extracted Sections:")
-            print(f"{'-'*80}")
+            print(f"{'-' * 80}")
             for i, section in enumerate(result.sections, 1):
                 print(f"{i}. '{section.title}'")
                 print(f"   - Content length: {len(section.content):,} chars")
@@ -42,7 +42,7 @@ async def test_docling_only(pdf_path: Path):
 
             # Show sample of raw text
             print(f"\n📄 Raw Text Sample (first 500 chars):")
-            print(f"{'-'*80}")
+            print(f"{'-' * 80}")
             print(result.raw_text[:500])
             print("...")
 
@@ -54,15 +54,16 @@ async def test_docling_only(pdf_path: Path):
     except Exception as e:
         print(f"❌ ERROR: {e}")
         import traceback
+
         traceback.print_exc()
         return False
 
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
-        print("Usage: python3 test_parsers_simple.py <path_to_pdf>")
+        print("Usage: python3 scripts/parse_pdf_simple.py <path_to_pdf>")
         print("\nExample:")
-        print("  python3 test_parsers_simple.py pdfs/2005.11401v4.pdf")
+        print("  python3 scripts/parse_pdf_simple.py pdfs/2005.11401v4.pdf")
         sys.exit(1)
 
     pdf_path = Path(sys.argv[1])
@@ -71,5 +72,5 @@ if __name__ == "__main__":
         print(f"❌ Error: PDF not found: {pdf_path}")
         sys.exit(1)
 
-    success = asyncio.run(test_docling_only(pdf_path))
+    success = asyncio.run(run_docling(pdf_path))
     sys.exit(0 if success else 1)

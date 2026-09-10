@@ -2,8 +2,9 @@
 Download a sample arXiv PDF for testing parsers.
 """
 
-import requests
 from pathlib import Path
+
+import requests
 
 
 def download_arxiv_pdf(arxiv_id: str, output_dir: Path = Path("./test_pdfs")) -> Path:
@@ -70,4 +71,4 @@ if __name__ == "__main__":
     pdf_path = download_arxiv_pdf(args.arxiv_id, args.output_dir)
     print(f"\n✅ Ready to test!")
     print(f"\nRun the comparison test:")
-    print(f"  python tests/test_parser_comparison.py {pdf_path}")
+    print(f"  python scripts/compare_parsers_detailed.py {pdf_path}")

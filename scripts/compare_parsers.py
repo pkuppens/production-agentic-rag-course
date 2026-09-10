@@ -10,15 +10,15 @@ import asyncio
 import sys
 from pathlib import Path
 
-from src.services.pdf_parser.docling import DoclingParser
 from src.services.pdf_parser.deepseek import DeepSeekParser
+from src.services.pdf_parser.docling import DoclingParser
 
 
-async def test_both_parsers(pdf_path: Path):
+async def run_comparison(pdf_path: Path):
     """Test both parsers and compare outputs."""
-    print(f"\n{'='*80}")
+    print(f"\n{'=' * 80}")
     print(f"TESTING BOTH PARSERS ON: {pdf_path.name}")
-    print(f"{'='*80}\n")
+    print(f"{'=' * 80}\n")
 
     # Test Docling
     print("🔍 1. DOCLING PARSER")
@@ -83,13 +83,14 @@ async def test_both_parsers(pdf_path: Path):
     except Exception as e:
         print(f"❌ DeepSeek failed: {e}")
         import traceback
+
         traceback.print_exc()
         deepseek_result = None
 
     # Comparison
-    print(f"\n{'='*80}")
+    print(f"\n{'=' * 80}")
     print("📊 COMPARISON & COMPATIBILITY CHECK")
-    print(f"{'='*80}\n")
+    print(f"{'=' * 80}\n")
 
     if docling_result and deepseek_result:
         print("✅ BOTH PARSERS SUCCEEDED!\n")
@@ -98,10 +99,13 @@ async def test_both_parsers(pdf_path: Path):
         print("1. Output Structure Compatibility:")
         checks = [
             ("Both return PdfContent type", True),
-            ("Both have .sections attribute", hasattr(docling_result, 'sections') and hasattr(deepseek_result, 'sections')),
-            ("Both have .raw_text attribute", hasattr(docling_result, 'raw_text') and hasattr(deepseek_result, 'raw_text')),
-            ("Both have .parser_used attribute", hasattr(docling_result, 'parser_used') and hasattr(deepseek_result, 'parser_used')),
-            ("Both have .metadata attribute", hasattr(docling_result, 'metadata') and hasattr(deepseek_result, 'metadata')),
+            ("Both have .sections attribute", hasattr(docling_result, "sections") and hasattr(deepseek_result, "sections")),
+            ("Both have .raw_text attribute", hasattr(docling_result, "raw_text") and hasattr(deepseek_result, "raw_text")),
+            (
+                "Both have .parser_used attribute",
+                hasattr(docling_result, "parser_used") and hasattr(deepseek_result, "parser_used"),
+            ),
+            ("Both have .metadata attribute", hasattr(docling_result, "metadata") and hasattr(deepseek_result, "metadata")),
         ]
 
         for check, passed in checks:
@@ -115,9 +119,9 @@ async def test_both_parsers(pdf_path: Path):
             ds_section = deepseek_result.sections[0]
 
             section_checks = [
-                ("Both have .title", hasattr(d_section, 'title') and hasattr(ds_section, 'title')),
-                ("Both have .content", hasattr(d_section, 'content') and hasattr(ds_section, 'content')),
-                ("Both have .level", hasattr(d_section, 'level') and hasattr(ds_section, 'level')),
+                ("Both have .title", hasattr(d_section, "title") and hasattr(ds_section, "title")),
+                ("Both have .content", hasattr(d_section, "content") and hasattr(ds_section, "content")),
+                ("Both have .level", hasattr(d_section, "level") and hasattr(ds_section, "level")),
             ]
 
             for check, passed in section_checks:
@@ -134,9 +138,9 @@ async def test_both_parsers(pdf_path: Path):
         print(f"   DeepSeek text:     {len(deepseek_result.raw_text):,} chars")
 
         # Final verdict
-        print(f"\n{'='*80}")
+        print(f"\n{'=' * 80}")
         print("✅ FINAL VERDICT: OUTPUT STRUCTURES ARE COMPATIBLE")
-        print(f"{'='*80}")
+        print(f"{'=' * 80}")
         print("\nBoth parsers produce PdfContent objects with identical structure.")
         print("Your existing pipeline (chunking, indexing, search) will work with")
         print("either parser without any code changes.\n")
@@ -157,9 +161,9 @@ async def test_both_parsers(pdf_path: Path):
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
-        print("Usage: python3 test_both_parsers.py <path_to_pdf>")
+        print("Usage: python3 scripts/compare_parsers.py <path_to_pdf>")
         print("\nExample:")
-        print("  python3 test_both_parsers.py pdfs/2005.11401v4.pdf")
+        print("  python3 scripts/compare_parsers.py pdfs/2005.11401v4.pdf")
         sys.exit(1)
 
     pdf_path = Path(sys.argv[1])
@@ -171,4 +175,4 @@ if __name__ == "__main__":
     print("\n⚠️  NOTE: Testing with max_pages=5 for faster testing")
     print("   Set max_pages=30 in production for full papers\n")
 
-    asyncio.run(test_both_parsers(pdf_path))
+    asyncio.run(run_comparison(pdf_path))

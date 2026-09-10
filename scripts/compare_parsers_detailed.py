@@ -11,15 +11,15 @@ from pathlib import Path
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.services.pdf_parser.docling import DoclingParser
 from src.services.pdf_parser.deepseek import DeepSeekParser
+from src.services.pdf_parser.docling import DoclingParser
 
 
 async def compare_parsers(pdf_path: Path):
     """Compare output from both parsers."""
-    print(f"\n{'='*80}")
+    print(f"\n{'=' * 80}")
     print(f"Testing PDF: {pdf_path.name}")
-    print(f"{'='*80}\n")
+    print(f"{'=' * 80}\n")
 
     # Configuration (matching defaults)
     max_pages = 30
@@ -83,13 +83,14 @@ async def compare_parsers(pdf_path: Path):
     except Exception as e:
         print(f"❌ DeepSeek failed: {e}")
         import traceback
+
         traceback.print_exc()
         deepseek_result = None
 
     # Comparison
-    print(f"\n{'='*80}")
+    print(f"\n{'=' * 80}")
     print("📊 COMPARISON")
-    print(f"{'='*80}\n")
+    print(f"{'=' * 80}\n")
 
     if docling_result and deepseek_result:
         print(f"✅ Both parsers succeeded!")
@@ -134,9 +135,7 @@ async def compare_parsers(pdf_path: Path):
 if __name__ == "__main__":
     import argparse
 
-    parser = argparse.ArgumentParser(
-        description="Compare Docling and DeepSeek parsers on a PDF file"
-    )
+    parser = argparse.ArgumentParser(description="Compare Docling and DeepSeek parsers on a PDF file")
     parser.add_argument(
         "pdf_path",
         type=Path,
