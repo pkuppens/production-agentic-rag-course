@@ -1,4 +1,4 @@
-.PHONY: help start stop restart status logs health setup format lint test test-cov clean
+.PHONY: help start stop restart status logs health setup format lint test test-cov eval clean
 
 # Default target
 help: ## Show this help message
@@ -46,6 +46,9 @@ test: ## Run tests
 
 test-cov: ## Run tests with coverage
 	uv run pytest --cov=src --cov-report=html
+
+eval: ## Run the golden QA set through the agentic RAG pipeline (requires the local stack running)
+	uv run python -m src.evaluation.runner
 
 # Cleanup
 clean: ## Clean up everything
