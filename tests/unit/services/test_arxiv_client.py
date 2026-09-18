@@ -97,7 +97,9 @@ class TestArxivClient:
             assert len(papers) == 1
             # Verify the URL includes date filters
             call_args = mock_client.return_value.__aenter__.return_value.get.call_args[0][0]
-            assert "submittedDate:[202401010000+TO+202401312359]" in call_args
+            # Brackets must be percent-encoded, not sent literally - arXiv's edge
+            # rejects literal `[`/`]` in the query string with a 406.
+            assert "submittedDate:%5B202401010000+TO+202401312359%5D" in call_args
 
     @pytest.mark.asyncio
     async def test_fetch_papers_http_timeout(self, arxiv_client):

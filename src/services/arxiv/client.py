@@ -207,7 +207,10 @@ class ArxivClient:
             "sortOrder": sort_order,
         }
 
-        safe = ":+[]"  # Don't encode :, +, [, ] characters needed for arXiv queries
+        # `[`/`]` must NOT be left unescaped: arXiv's edge rejects literal brackets in
+        # the query string with a 406 (confirmed by direct A/B testing - not a
+        # transient/throttle issue, a hard requirement of arXiv's request handling).
+        safe = ":+"  # Don't encode :, + characters needed for arXiv's date-range syntax
         url = f"{self.base_url}?{urlencode(params, quote_via=quote, safe=safe)}"
 
         logger.info(f"Fetching {max_results} {self.search_category} papers from arXiv")
@@ -259,7 +262,8 @@ class ArxivClient:
             "sortOrder": sort_order,
         }
 
-        safe = ":+[]*"  # Don't encode :, +, [, ], *, characters needed for arXiv queries
+        # `[`/`]` must NOT be left unescaped - see fetch_papers for why.
+        safe = ":+*"  # Don't encode :, +, * characters needed for arXiv queries
         url = f"{self.base_url}?{urlencode(params, quote_via=quote, safe=safe)}"
 
         xml_data = await self._get_with_retry(url)
@@ -282,7 +286,8 @@ class ArxivClient:
         clean_id = arxiv_id.split("v")[0] if "v" in arxiv_id else arxiv_id
         params = {"id_list": clean_id, "max_results": 1}
 
-        safe = ":+[]*"  # Don't encode :, +, [, ], *, characters needed for arXiv queries
+        # `[`/`]` must NOT be left unescaped - see fetch_papers for why.
+        safe = ":+*"  # Don't encode :, +, * characters needed for arXiv queries
         url = f"{self.base_url}?{urlencode(params, quote_via=quote, safe=safe)}"
 
         xml_data = await self._get_with_retry(url, context=f" for paper {arxiv_id}")
