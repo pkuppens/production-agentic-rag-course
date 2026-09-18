@@ -75,6 +75,34 @@ class ArxivClient:
             return ArxivAPIServerError(message)
         return ArxivAPIClientError(message)
 
+    def _extract_embedded_error(self, xml_data: str) -> Optional[str]:
+        """Detect arXiv's malformed-query error format.
+
+        Instead of a 4xx status, arXiv sometimes answers with HTTP 200 and a feed
+        containing exactly one entry titled "Error", linking to the API user manual,
+        with the real message in <summary>. Observed in practice even for a query
+        whose parameters are individually valid (e.g. sortOrder=descending rejected
+        with "sortOrder must be in: ascending, descending") while the byte-identical
+        request succeeds moments later - i.e. the same server-side flakiness as the
+        406s, just surfaced as a 200 instead of an HTTP error status. Returns the
+        embedded error message, or None if this isn't that shape.
+        """
+        try:
+            root = ET.fromstring(xml_data)
+        except ET.ParseError:
+            return None
+
+        entries = root.findall("atom:entry", self.namespaces)
+        if len(entries) != 1:
+            return None
+
+        entry = entries[0]
+        title = self._get_text(entry, "atom:title")
+        entry_id = self._get_text(entry, "atom:id")
+        if title == "Error" and "user-manual" in entry_id:
+            return self._get_text(entry, "atom:summary") or "(no message)"
+        return None
+
     async def _get_with_retry(self, url: str, context: str = "") -> str:
         """GET an arXiv API URL, honoring arXiv's documented rate-limit policy.
 
@@ -82,10 +110,11 @@ class ArxivClient:
         single connection at a time (https://info.arxiv.org/help/api/user-manual.html) -
         `rate_limit_delay` enforces that spacing before every attempt, including
         retries. On top of that policy, this retries a bounded number of times with
-        backoff when arXiv itself signals throttling/overload (406, 429, or 5xx -
-        see `_classify_http_status_error`), since a single request already complying
-        with the documented policy can still be throttled by server-side load
-        shedding. Non-retryable errors (other 4xx, timeouts) propagate immediately.
+        backoff when arXiv itself signals throttling/overload (406, 429, 5xx - see
+        `_classify_http_status_error` - or its embedded-error-in-a-200 shape, see
+        `_extract_embedded_error`), since a single request already complying with
+        the documented policy can still be throttled by server-side load shedding.
+        Non-retryable errors (other 4xx, timeouts) propagate immediately.
 
         :param url: Fully-built arXiv API query URL
         :param context: Optional message suffix for logging/errors (e.g. " for paper X")
@@ -100,32 +129,36 @@ class ArxivClient:
                     await asyncio.sleep(self.rate_limit_delay - time_since_last)
 
             self._last_request_time = time.time()
+            error: Optional[ArxivAPIException] = None
 
             try:
                 async with httpx.AsyncClient(timeout=self.timeout_seconds) as client:
                     response = await client.get(url)
                     response.raise_for_status()
-                    return response.text
+                    xml_data = response.text
+
+                embedded_error = self._extract_embedded_error(xml_data)
+                if embedded_error is None:
+                    return xml_data
+                error = ArxivAPIServerError(f"arXiv API returned an embedded error{context}: {embedded_error}")
             except httpx.TimeoutException as e:
                 logger.error(f"arXiv API timeout{context}: {e}")
                 raise ArxivAPITimeoutError(f"arXiv API request timed out{context}: {e}") from e
             except httpx.HTTPStatusError as e:
                 status_code = e.response.status_code
                 error = self._classify_http_status_error(status_code, f"arXiv API returned error {status_code}{context}: {e}")
-                if isinstance(error, ArxivAPIClientError) or attempt == max_retries - 1:
-                    logger.error(f"arXiv API HTTP error{context}: {e}")
-                    raise error from e
-                # Generous but bounded: this isn't time-critical, so keep retrying, but
-                # cap the interval rather than letting exponential backoff run into minutes.
-                wait_time = min(self.rate_limit_delay * (2**attempt), self._settings.metadata_max_retry_delay)
-                logger.warning(
-                    f"arXiv API returned {status_code}{context} (attempt {attempt + 1}/{max_retries}); "
-                    f"retrying in {wait_time:.0f}s"
-                )
-                await asyncio.sleep(wait_time)
             except Exception as e:
                 logger.error(f"Failed to fetch from arXiv{context}: {e}")
                 raise ArxivAPIException(f"Unexpected error fetching from arXiv{context}: {e}") from e
+
+            if isinstance(error, ArxivAPIClientError) or attempt == max_retries - 1:
+                logger.error(str(error))
+                raise error
+            # Generous but bounded: this isn't time-critical, so keep retrying, but
+            # cap the interval rather than letting exponential backoff run into minutes.
+            wait_time = min(self.rate_limit_delay * (2**attempt), self._settings.metadata_max_retry_delay)
+            logger.warning(f"{error} (attempt {attempt + 1}/{max_retries}); retrying in {wait_time:.0f}s")
+            await asyncio.sleep(wait_time)
 
         raise ArxivAPIException(f"arXiv API request failed after {max_retries} attempts{context}")
 

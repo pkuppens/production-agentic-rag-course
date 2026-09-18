@@ -207,6 +207,60 @@ class TestArxivClient:
         assert mock_get.call_count == 1
 
     @pytest.mark.asyncio
+    async def test_fetch_papers_retries_on_embedded_error_response(self, arxiv_client, mock_arxiv_response):
+        """arXiv sometimes answers with HTTP 200 and a single <entry title="Error">
+        instead of a 4xx status - observed even for parameters that are individually
+        valid (e.g. sortOrder=descending rejected as invalid), with the identical
+        request succeeding moments later. This must be detected and retried rather
+        than silently parsed as if it were paper data."""
+        embedded_error_response = """<?xml version='1.0' encoding='UTF-8'?>
+        <feed xmlns:opensearch="http://a9.com/-/spec/opensearch/1.1/" xmlns:arxiv="http://arxiv.org/schemas/atom" xmlns="http://www.w3.org/2005/Atom">
+          <entry>
+            <id>https://arxiv.org/help/api/user-manual#sort</id>
+            <title>Error</title>
+            <summary>sortOrder must be in: ascending, descending</summary>
+          </entry>
+        </feed>"""
+
+        with patch("httpx.AsyncClient") as mock_client:
+            error_response = MagicMock()
+            error_response.text = embedded_error_response
+            error_response.raise_for_status.return_value = None
+
+            ok_response = MagicMock()
+            ok_response.text = mock_arxiv_response
+            ok_response.raise_for_status.return_value = None
+
+            mock_get = AsyncMock(side_effect=[error_response, ok_response])
+            mock_client.return_value.__aenter__.return_value.get = mock_get
+
+            papers = await arxiv_client.fetch_papers(max_results=1)
+
+        assert len(papers) == 1
+        assert mock_get.call_count == 2
+
+    @pytest.mark.asyncio
+    async def test_fetch_papers_embedded_error_exhausts_retries(self, arxiv_client):
+        """A persistent embedded-error response should still raise after retries are exhausted."""
+        embedded_error_response = """<?xml version='1.0' encoding='UTF-8'?>
+        <feed xmlns:opensearch="http://a9.com/-/spec/opensearch/1.1/" xmlns:arxiv="http://arxiv.org/schemas/atom" xmlns="http://www.w3.org/2005/Atom">
+          <entry>
+            <id>https://arxiv.org/help/api/user-manual#sort</id>
+            <title>Error</title>
+            <summary>sortOrder must be in: ascending, descending</summary>
+          </entry>
+        </feed>"""
+
+        with patch("httpx.AsyncClient") as mock_client:
+            error_response = MagicMock()
+            error_response.text = embedded_error_response
+            error_response.raise_for_status.return_value = None
+            mock_client.return_value.__aenter__.return_value.get = AsyncMock(return_value=error_response)
+
+            with pytest.raises(ArxivAPIServerError, match="embedded error"):
+                await arxiv_client.fetch_papers(max_results=1)
+
+    @pytest.mark.asyncio
     async def test_fetch_paper_by_id_success(self, arxiv_client, mock_arxiv_response):
         """Test fetching a single paper by ID."""
         with patch("httpx.AsyncClient") as mock_client:
