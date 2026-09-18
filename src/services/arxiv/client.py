@@ -9,7 +9,16 @@ from urllib.parse import quote, urlencode
 
 import httpx
 from src.config import ArxivSettings
-from src.exceptions import ArxivAPIException, ArxivAPITimeoutError, ArxivParseError, PDFDownloadException, PDFDownloadTimeoutError
+from src.exceptions import (
+    ArxivAPIClientError,
+    ArxivAPIException,
+    ArxivAPIRateLimitError,
+    ArxivAPIServerError,
+    ArxivAPITimeoutError,
+    ArxivParseError,
+    PDFDownloadException,
+    PDFDownloadTimeoutError,
+)
 from src.schemas.arxiv.paper import ArxivPaper
 
 logger = logging.getLogger(__name__)
@@ -52,6 +61,19 @@ class ArxivClient:
     @property
     def search_category(self) -> str:
         return self._settings.search_category
+
+    def _classify_http_status_error(self, status_code: int, message: str) -> ArxivAPIException:
+        """Map an arXiv HTTP status code to a retryable/non-retryable exception.
+
+        429 and 406 are both treated as throttling (arXiv's export API answers
+        overload with a bare 406, not 429) and are retryable; other 4xx are
+        permanent client errors; 5xx are retryable server errors.
+        """
+        if status_code in (429, 406):
+            return ArxivAPIRateLimitError(message)
+        if 500 <= status_code < 600:
+            return ArxivAPIServerError(message)
+        return ArxivAPIClientError(message)
 
     async def fetch_papers(
         self,
@@ -128,7 +150,9 @@ class ArxivClient:
             raise ArxivAPITimeoutError(f"arXiv API request timed out: {e}")
         except httpx.HTTPStatusError as e:
             logger.error(f"arXiv API HTTP error: {e}")
-            raise ArxivAPIException(f"arXiv API returned error {e.response.status_code}: {e}")
+            raise self._classify_http_status_error(
+                e.response.status_code, f"arXiv API returned error {e.response.status_code}: {e}"
+            ) from e
         except Exception as e:
             logger.error(f"Failed to fetch papers from arXiv: {e}")
             raise ArxivAPIException(f"Unexpected error fetching papers from arXiv: {e}")
@@ -203,7 +227,9 @@ class ArxivClient:
             raise ArxivAPITimeoutError(f"arXiv API request timed out: {e}")
         except httpx.HTTPStatusError as e:
             logger.error(f"arXiv API HTTP error: {e}")
-            raise ArxivAPIException(f"arXiv API returned error {e.response.status_code}: {e}")
+            raise self._classify_http_status_error(
+                e.response.status_code, f"arXiv API returned error {e.response.status_code}: {e}"
+            ) from e
         except Exception as e:
             logger.error(f"Failed to fetch papers from arXiv: {e}")
             raise ArxivAPIException(f"Unexpected error fetching papers from arXiv: {e}")
@@ -244,7 +270,9 @@ class ArxivClient:
             raise ArxivAPITimeoutError(f"arXiv API request timed out for paper {arxiv_id}: {e}")
         except httpx.HTTPStatusError as e:
             logger.error(f"arXiv API HTTP error for paper {arxiv_id}: {e}")
-            raise ArxivAPIException(f"arXiv API returned error {e.response.status_code} for paper {arxiv_id}: {e}")
+            raise self._classify_http_status_error(
+                e.response.status_code, f"arXiv API returned error {e.response.status_code} for paper {arxiv_id}: {e}"
+            ) from e
         except Exception as e:
             logger.error(f"Failed to fetch paper {arxiv_id} from arXiv: {e}")
             raise ArxivAPIException(f"Unexpected error fetching paper {arxiv_id} from arXiv: {e}")

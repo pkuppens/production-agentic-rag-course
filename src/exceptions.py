@@ -50,7 +50,20 @@ class ArxivAPITimeoutError(ArxivAPIException):
 
 
 class ArxivAPIRateLimitError(ArxivAPIException):
-    """Exception raised when arXiv API rate limit is exceeded."""
+    """Exception raised when arXiv throttles a request (HTTP 429, or 406 - arXiv's
+    export API answers overload with a bare 406 as a load-shedding signal rather than
+    429, so it is treated the same way). Retryable with backoff.
+    """
+
+
+class ArxivAPIClientError(ArxivAPIException):
+    """Exception raised for non-retryable 4xx errors from the arXiv API (e.g. a
+    malformed query). Not retryable.
+    """
+
+
+class ArxivAPIServerError(ArxivAPIException):
+    """Exception raised for 5xx errors from the arXiv API. Retryable."""
 
 
 class ArxivParseError(ArxivAPIException):
