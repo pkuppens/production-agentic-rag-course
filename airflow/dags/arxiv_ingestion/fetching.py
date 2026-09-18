@@ -1,6 +1,12 @@
 import asyncio
 import logging
+import sys
 from datetime import datetime, timedelta
+
+# `src.*` is only importable once /opt/airflow is on sys.path - the container's
+# PYTHONPATH (/opt/airflow/src) points one level too deep for that. Set it here
+# directly rather than relying on `.common` being imported first for its side effect.
+sys.path.insert(0, "/opt/airflow")
 
 from airflow.exceptions import AirflowFailException
 from src.exceptions import ArxivAPIClientError
