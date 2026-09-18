@@ -52,7 +52,7 @@ def index_papers_hybrid(**context):
 
         fetch_results = None
         if ti:
-            fetch_results = ti.xcom_pull(task_ids="fetch_daily_papers", key="fetch_results")
+            fetch_results = ti.xcom_pull(task_ids="process_and_store_papers", key="fetch_results")
 
         with database.get_session() as session:
             from src.models.paper import Paper

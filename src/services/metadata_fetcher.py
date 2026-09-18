@@ -87,6 +87,7 @@ class MetadataFetcher:
             "papers_fetched": 0,
             "pdfs_downloaded": 0,
             "pdfs_parsed": 0,
+            "pdfs_skipped": 0,
             "papers_stored": 0,
             "papers_indexed": 0,
             "errors": [],
@@ -107,22 +108,15 @@ class MetadataFetcher:
                 logger.warning("No papers found")
                 return results
 
-            # Step 2: Process PDFs if requested
-            pdf_results = {}
-            if process_pdfs:
-                pdf_results = await self._process_pdfs_batch(papers)
-                results["pdfs_downloaded"] = pdf_results["downloaded"]
-                results["pdfs_parsed"] = pdf_results["parsed"]
-                results["errors"].extend(pdf_results["errors"])
-
-            # Step 3: Store to database if requested
-            if store_to_db and db_session:
-                logger.info("Step 3: Storing papers to database...")
-                stored_count = self._store_papers_to_db(papers, pdf_results.get("parsed_papers", {}), db_session)
-                results["papers_stored"] = stored_count
-            elif store_to_db:
-                logger.warning("Database storage requested but no session provided")
-                results["errors"].append("Database session not provided for storage")
+            # Steps 2-3: Download/parse PDFs and store to database
+            process_results = await self.process_and_store_papers(
+                papers, process_pdfs=process_pdfs, store_to_db=store_to_db, db_session=db_session
+            )
+            results["pdfs_downloaded"] = process_results["pdfs_downloaded"]
+            results["pdfs_parsed"] = process_results["pdfs_parsed"]
+            results["pdfs_skipped"] = process_results["pdfs_skipped"]
+            results["papers_stored"] = process_results["papers_stored"]
+            results["errors"].extend(process_results["errors"])
 
             # Calculate total processing time
             processing_time = (datetime.now() - start_time).total_seconds()
@@ -146,6 +140,73 @@ class MetadataFetcher:
             logger.error(f"Pipeline error: {e}")
             results["errors"].append(f"Pipeline error: {str(e)}")
             raise PipelineException(f"Pipeline execution failed: {e}") from e
+
+    async def process_and_store_papers(
+        self,
+        papers: List[ArxivPaper],
+        process_pdfs: bool = True,
+        store_to_db: bool = True,
+        db_session: Optional[Session] = None,
+    ) -> Dict[str, Any]:
+        """Download/parse PDFs for already-fetched papers and store them to the database.
+
+        Split out from `fetch_and_process_papers` so a caller that already has paper
+        metadata (e.g. from a previous pipeline step) doesn't need to re-hit the arXiv
+        API to redo this part. Skips PDF download/parsing for papers whose
+        `pdf_processed=True` is already stored, so retrying this step - or re-running
+        the pipeline for an already-ingested date - doesn't redo Docling parsing or
+        clobber previously stored content.
+
+        :param papers: Paper metadata already fetched from arXiv
+        :param process_pdfs: Whether to download and parse PDFs
+        :param store_to_db: Whether to store results in the database
+        :param db_session: Database session (required if store_to_db=True)
+        :returns: Dictionary with processing results and statistics
+        """
+        results: Dict[str, Any] = {
+            "pdfs_downloaded": 0,
+            "pdfs_parsed": 0,
+            "pdfs_skipped": 0,
+            "papers_stored": 0,
+            "errors": [],
+            "processing_time": 0,
+        }
+
+        start_time = datetime.now()
+
+        if not papers:
+            return results
+
+        already_processed_ids: set[str] = set()
+        if db_session is not None:
+            paper_repo = PaperRepository(db_session)
+            for paper in papers:
+                existing = paper_repo.get_by_arxiv_id(paper.arxiv_id)
+                if existing and existing.pdf_processed:
+                    already_processed_ids.add(paper.arxiv_id)
+            if already_processed_ids:
+                logger.info(f"Skipping PDF processing for {len(already_processed_ids)} already-processed papers")
+
+        pdf_results: Dict[str, Any] = {}
+        if process_pdfs:
+            papers_to_process = [p for p in papers if p.arxiv_id not in already_processed_ids]
+            pdf_results = await self._process_pdfs_batch(papers_to_process)
+            results["pdfs_downloaded"] = pdf_results["downloaded"]
+            results["pdfs_parsed"] = pdf_results["parsed"]
+            results["pdfs_skipped"] = len(already_processed_ids)
+            results["errors"].extend(pdf_results["errors"])
+
+        if store_to_db and db_session:
+            stored_count = self._store_papers_to_db(
+                papers, pdf_results.get("parsed_papers", {}), db_session, already_processed_ids
+            )
+            results["papers_stored"] = stored_count
+        elif store_to_db:
+            logger.warning("Database storage requested but no session provided")
+            results["errors"].append("Database session not provided for storage")
+
+        results["processing_time"] = (datetime.now() - start_time).total_seconds()
+        return results
 
     async def _process_pdfs_batch(self, papers: List[ArxivPaper]) -> Dict[str, Any]:
         """
@@ -331,6 +392,7 @@ class MetadataFetcher:
         papers: List[ArxivPaper],
         parsed_papers: Dict[str, ParsedPaper],
         db_session: Session,
+        already_processed_ids: Optional[set[str]] = None,
     ) -> int:
         """
         Store papers and parsed content to database with comprehensive content storage.
@@ -339,11 +401,16 @@ class MetadataFetcher:
             papers: List of ArxivPaper metadata
             parsed_papers: Dictionary of parsed PDF content by arxiv_id
             db_session: Database session
+            already_processed_ids: arxiv_ids intentionally skipped because they were
+                already processed in a previous run - their existing parsed content
+                (raw_text, pdf_processed, etc.) is left untouched rather than being
+                overwritten with "not processed" placeholders.
 
         Returns:
             Number of papers stored successfully
         """
         paper_repo = PaperRepository(db_session)
+        already_processed_ids = already_processed_ids or set()
         stored_count = 0
 
         for paper in papers:
@@ -372,6 +439,10 @@ class MetadataFetcher:
                     logger.debug(
                         f"Storing paper {paper.arxiv_id} with parsed content ({len(parsed_content.get('raw_text', '')) if parsed_content.get('raw_text') else 0} chars)"
                     )
+                elif paper.arxiv_id in already_processed_ids:
+                    # Deliberately skipped re-parsing: leave existing raw_text/pdf_processed
+                    # untouched instead of overwriting with "not processed" placeholders.
+                    logger.debug(f"Storing paper {paper.arxiv_id} metadata only (PDF content already processed)")
                 else:
                     # No parsed content - just store metadata
                     paper_data.update(

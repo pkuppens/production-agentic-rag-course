@@ -19,7 +19,7 @@ def generate_daily_report(**context):
         logger.warning("No task instance available, generating basic report")
         return {"status": "basic_report", "message": "No task instance for XCom data"}
 
-    fetch_stats = ti.xcom_pull(task_ids="fetch_daily_papers", key="fetch_results") or {}
+    fetch_stats = ti.xcom_pull(task_ids="process_and_store_papers", key="fetch_results") or {}
     hybrid_stats = ti.xcom_pull(task_ids="index_papers_hybrid", key="hybrid_index_stats") or {}
 
     report = {

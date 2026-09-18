@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 from airflow import DAG
 from airflow.operators.bash import BashOperator
 from airflow.operators.python import PythonOperator
-from arxiv_ingestion.fetching import fetch_daily_papers
+from arxiv_ingestion.fetching import fetch_metadata, process_and_store_papers
 from arxiv_ingestion.indexing import index_papers_hybrid, verify_hybrid_index
 from arxiv_ingestion.reporting import generate_daily_report
 
@@ -40,9 +40,21 @@ setup_task = PythonOperator(
     dag=dag,
 )
 
-fetch_task = PythonOperator(
-    task_id="fetch_daily_papers",
-    python_callable=fetch_daily_papers,
+# ArxivClient.fetch_papers already retries generously (with a capped, short backoff)
+# on arXiv throttling/overload responses (406/429/5xx) - see _get_with_retry. This
+# task-level retry is just a rare outer safety net for whatever's left over (e.g. the
+# whole process dying), so it stays short rather than compounding into minutes on top.
+fetch_metadata_task = PythonOperator(
+    task_id="fetch_metadata",
+    python_callable=fetch_metadata,
+    retries=2,
+    retry_delay=timedelta(seconds=30),
+    dag=dag,
+)
+
+process_and_store_task = PythonOperator(
+    task_id="process_and_store_papers",
+    python_callable=process_and_store_papers,
     dag=dag,
 )
 
@@ -71,5 +83,5 @@ cleanup_task = BashOperator(
 )
 
 # Task dependencies
-# Simplified pipeline: setup -> fetch -> hybrid index -> report -> cleanup
-setup_task >> fetch_task >> index_hybrid_task >> report_task >> cleanup_task
+# setup -> fetch metadata -> download/parse/store -> hybrid index -> report -> cleanup
+setup_task >> fetch_metadata_task >> process_and_store_task >> index_hybrid_task >> report_task >> cleanup_task
