@@ -33,6 +33,8 @@ class TestArxivClient:
             rate_limit_delay=0.1,  # Faster for tests
             timeout_seconds=5,
             pdf_cache_dir="/tmp/test_arxiv_cache",
+            metadata_max_retries=2,  # Fewer/faster retries for tests
+            metadata_max_retry_delay=0.1,
         )
         return ArxivClient(settings)
 
@@ -166,6 +168,43 @@ class TestArxivClient:
 
             with pytest.raises(ArxivAPIClientError):
                 await arxiv_client.fetch_papers(max_results=1)
+
+    @pytest.mark.asyncio
+    async def test_fetch_papers_retries_and_succeeds_after_throttle(self, arxiv_client, mock_arxiv_response):
+        """A throttled request should retry and succeed once arXiv stops throttling."""
+        with patch("httpx.AsyncClient") as mock_client:
+            throttled_response = MagicMock()
+            throttled_response.status_code = 406
+            ok_response = MagicMock()
+            ok_response.text = mock_arxiv_response
+            ok_response.raise_for_status.return_value = None
+
+            mock_get = AsyncMock(
+                side_effect=[
+                    httpx.HTTPStatusError("Throttled", request=MagicMock(), response=throttled_response),
+                    ok_response,
+                ]
+            )
+            mock_client.return_value.__aenter__.return_value.get = mock_get
+
+            papers = await arxiv_client.fetch_papers(max_results=1)
+
+        assert len(papers) == 1
+        assert mock_get.call_count == 2
+
+    @pytest.mark.asyncio
+    async def test_fetch_papers_client_error_does_not_retry(self, arxiv_client):
+        """A non-retryable 4xx should fail on the first attempt without retrying."""
+        with patch("httpx.AsyncClient") as mock_client:
+            mock_response = MagicMock()
+            mock_response.status_code = 404
+            mock_get = AsyncMock(side_effect=httpx.HTTPStatusError("Not found", request=MagicMock(), response=mock_response))
+            mock_client.return_value.__aenter__.return_value.get = mock_get
+
+            with pytest.raises(ArxivAPIClientError):
+                await arxiv_client.fetch_papers(max_results=1)
+
+        assert mock_get.call_count == 1
 
     @pytest.mark.asyncio
     async def test_fetch_paper_by_id_success(self, arxiv_client, mock_arxiv_response):

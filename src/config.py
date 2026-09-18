@@ -38,6 +38,11 @@ class ArxivSettings(BaseConfigSettings):
     download_retry_delay_base: float = 5.0
     max_concurrent_downloads: int = 5
     max_concurrent_parsing: int = 1
+    # Metadata search API isn't time-critical, so retry generously when arXiv itself
+    # signals throttling/overload (406/429/5xx) - but cap the interval rather than
+    # letting exponential backoff run into minutes (see ArxivClient._get_with_retry).
+    metadata_max_retries: int = 8
+    metadata_max_retry_delay: float = 10.0
 
     namespaces: dict = {
         "atom": "http://www.w3.org/2005/Atom",

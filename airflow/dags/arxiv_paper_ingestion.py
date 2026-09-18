@@ -40,16 +40,15 @@ setup_task = PythonOperator(
     dag=dag,
 )
 
-# arXiv's export API answers overload with a bare 406 (a load-shedding signal, not a
-# content-negotiation failure) rather than 429 - retry it more aggressively than the
-# DAG default, since these throttle windows are typically much shorter than 30 minutes.
+# ArxivClient.fetch_papers already retries generously (with a capped, short backoff)
+# on arXiv throttling/overload responses (406/429/5xx) - see _get_with_retry. This
+# task-level retry is just a rare outer safety net for whatever's left over (e.g. the
+# whole process dying), so it stays short rather than compounding into minutes on top.
 fetch_metadata_task = PythonOperator(
     task_id="fetch_metadata",
     python_callable=fetch_metadata,
-    retries=5,
-    retry_delay=timedelta(minutes=2),
-    retry_exponential_backoff=True,
-    max_retry_delay=timedelta(minutes=30),
+    retries=2,
+    retry_delay=timedelta(seconds=30),
     dag=dag,
 )
 
