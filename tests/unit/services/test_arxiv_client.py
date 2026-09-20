@@ -3,7 +3,16 @@ from unittest.mock import AsyncMock, MagicMock, mock_open, patch
 
 import httpx
 import pytest
-from src.exceptions import ArxivAPIException, ArxivAPITimeoutError, ArxivParseError, PDFDownloadException, PDFDownloadTimeoutError
+from src.exceptions import (
+    ArxivAPIClientError,
+    ArxivAPIException,
+    ArxivAPIRateLimitError,
+    ArxivAPIServerError,
+    ArxivAPITimeoutError,
+    ArxivParseError,
+    PDFDownloadException,
+    PDFDownloadTimeoutError,
+)
 from src.schemas.arxiv.paper import ArxivPaper
 from src.services.arxiv.client import ArxivClient
 from src.services.arxiv.factory import make_arxiv_client
@@ -24,6 +33,8 @@ class TestArxivClient:
             rate_limit_delay=0.1,  # Faster for tests
             timeout_seconds=5,
             pdf_cache_dir="/tmp/test_arxiv_cache",
+            metadata_max_retries=2,  # Fewer/faster retries for tests
+            metadata_max_retry_delay=0.1,
         )
         return ArxivClient(settings)
 
@@ -86,7 +97,9 @@ class TestArxivClient:
             assert len(papers) == 1
             # Verify the URL includes date filters
             call_args = mock_client.return_value.__aenter__.return_value.get.call_args[0][0]
-            assert "submittedDate:[202401010000+TO+202401312359]" in call_args
+            # Brackets must be percent-encoded, not sent literally - arXiv's edge
+            # rejects literal `[`/`]` in the query string with a 406.
+            assert "submittedDate:%5B202401010000+TO+202401312359%5D" in call_args
 
     @pytest.mark.asyncio
     async def test_fetch_papers_http_timeout(self, arxiv_client):
@@ -115,6 +128,139 @@ class TestArxivClient:
                 await arxiv_client.fetch_papers(max_results=1)
 
             assert "arXiv API returned error 500" in str(exc_info.value)
+
+    @pytest.mark.asyncio
+    async def test_fetch_papers_server_error_is_retryable(self, arxiv_client):
+        """A 5xx from arXiv should raise the retryable server-error type."""
+        with patch("httpx.AsyncClient") as mock_client:
+            mock_response = MagicMock()
+            mock_response.status_code = 503
+            mock_client.return_value.__aenter__.return_value.get = AsyncMock(
+                side_effect=httpx.HTTPStatusError("Service unavailable", request=MagicMock(), response=mock_response)
+            )
+
+            with pytest.raises(ArxivAPIServerError):
+                await arxiv_client.fetch_papers(max_results=1)
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("status_code", [429, 406])
+    async def test_fetch_papers_throttle_status_is_rate_limit_error(self, arxiv_client, status_code):
+        """arXiv answers overload with a bare 406 as well as 429 - both should be treated
+        as retryable throttling, not a permanent client error."""
+        with patch("httpx.AsyncClient") as mock_client:
+            mock_response = MagicMock()
+            mock_response.status_code = status_code
+            mock_client.return_value.__aenter__.return_value.get = AsyncMock(
+                side_effect=httpx.HTTPStatusError("Throttled", request=MagicMock(), response=mock_response)
+            )
+
+            with pytest.raises(ArxivAPIRateLimitError):
+                await arxiv_client.fetch_papers(max_results=1)
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("status_code", [400, 403, 404])
+    async def test_fetch_papers_other_client_error_is_not_retryable(self, arxiv_client, status_code):
+        """Non-throttle 4xx errors are permanent and should not be classified as retryable."""
+        with patch("httpx.AsyncClient") as mock_client:
+            mock_response = MagicMock()
+            mock_response.status_code = status_code
+            mock_client.return_value.__aenter__.return_value.get = AsyncMock(
+                side_effect=httpx.HTTPStatusError("Rejected", request=MagicMock(), response=mock_response)
+            )
+
+            with pytest.raises(ArxivAPIClientError):
+                await arxiv_client.fetch_papers(max_results=1)
+
+    @pytest.mark.asyncio
+    async def test_fetch_papers_retries_and_succeeds_after_throttle(self, arxiv_client, mock_arxiv_response):
+        """A throttled request should retry and succeed once arXiv stops throttling."""
+        with patch("httpx.AsyncClient") as mock_client:
+            throttled_response = MagicMock()
+            throttled_response.status_code = 406
+            ok_response = MagicMock()
+            ok_response.text = mock_arxiv_response
+            ok_response.raise_for_status.return_value = None
+
+            mock_get = AsyncMock(
+                side_effect=[
+                    httpx.HTTPStatusError("Throttled", request=MagicMock(), response=throttled_response),
+                    ok_response,
+                ]
+            )
+            mock_client.return_value.__aenter__.return_value.get = mock_get
+
+            papers = await arxiv_client.fetch_papers(max_results=1)
+
+        assert len(papers) == 1
+        assert mock_get.call_count == 2
+
+    @pytest.mark.asyncio
+    async def test_fetch_papers_client_error_does_not_retry(self, arxiv_client):
+        """A non-retryable 4xx should fail on the first attempt without retrying."""
+        with patch("httpx.AsyncClient") as mock_client:
+            mock_response = MagicMock()
+            mock_response.status_code = 404
+            mock_get = AsyncMock(side_effect=httpx.HTTPStatusError("Not found", request=MagicMock(), response=mock_response))
+            mock_client.return_value.__aenter__.return_value.get = mock_get
+
+            with pytest.raises(ArxivAPIClientError):
+                await arxiv_client.fetch_papers(max_results=1)
+
+        assert mock_get.call_count == 1
+
+    @pytest.mark.asyncio
+    async def test_fetch_papers_retries_on_embedded_error_response(self, arxiv_client, mock_arxiv_response):
+        """arXiv sometimes answers with HTTP 200 and a single <entry title="Error">
+        instead of a 4xx status - observed even for parameters that are individually
+        valid (e.g. sortOrder=descending rejected as invalid), with the identical
+        request succeeding moments later. This must be detected and retried rather
+        than silently parsed as if it were paper data."""
+        embedded_error_response = """<?xml version='1.0' encoding='UTF-8'?>
+        <feed xmlns:opensearch="http://a9.com/-/spec/opensearch/1.1/" xmlns:arxiv="http://arxiv.org/schemas/atom" xmlns="http://www.w3.org/2005/Atom">
+          <entry>
+            <id>https://arxiv.org/help/api/user-manual#sort</id>
+            <title>Error</title>
+            <summary>sortOrder must be in: ascending, descending</summary>
+          </entry>
+        </feed>"""
+
+        with patch("httpx.AsyncClient") as mock_client:
+            error_response = MagicMock()
+            error_response.text = embedded_error_response
+            error_response.raise_for_status.return_value = None
+
+            ok_response = MagicMock()
+            ok_response.text = mock_arxiv_response
+            ok_response.raise_for_status.return_value = None
+
+            mock_get = AsyncMock(side_effect=[error_response, ok_response])
+            mock_client.return_value.__aenter__.return_value.get = mock_get
+
+            papers = await arxiv_client.fetch_papers(max_results=1)
+
+        assert len(papers) == 1
+        assert mock_get.call_count == 2
+
+    @pytest.mark.asyncio
+    async def test_fetch_papers_embedded_error_exhausts_retries(self, arxiv_client):
+        """A persistent embedded-error response should still raise after retries are exhausted."""
+        embedded_error_response = """<?xml version='1.0' encoding='UTF-8'?>
+        <feed xmlns:opensearch="http://a9.com/-/spec/opensearch/1.1/" xmlns:arxiv="http://arxiv.org/schemas/atom" xmlns="http://www.w3.org/2005/Atom">
+          <entry>
+            <id>https://arxiv.org/help/api/user-manual#sort</id>
+            <title>Error</title>
+            <summary>sortOrder must be in: ascending, descending</summary>
+          </entry>
+        </feed>"""
+
+        with patch("httpx.AsyncClient") as mock_client:
+            error_response = MagicMock()
+            error_response.text = embedded_error_response
+            error_response.raise_for_status.return_value = None
+            mock_client.return_value.__aenter__.return_value.get = AsyncMock(return_value=error_response)
+
+            with pytest.raises(ArxivAPIServerError, match="embedded error"):
+                await arxiv_client.fetch_papers(max_results=1)
 
     @pytest.mark.asyncio
     async def test_fetch_paper_by_id_success(self, arxiv_client, mock_arxiv_response):
