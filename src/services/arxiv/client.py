@@ -25,7 +25,18 @@ logger = logging.getLogger(__name__)
 
 
 class ArxivClient:
-    """Client for fetching papers from arXiv API."""
+    """Client for fetching papers from arXiv API.
+
+    arXiv's export API has known quirks under load: it answers overload with a bare
+    HTTP 406 (not 429), and occasionally with an HTTP 200 wrapping a single
+    "<entry title='Error'>" feed instead - both for requests whose parameters are
+    individually valid, with the byte-identical request succeeding moments later.
+    See `_get_with_retry` for how this is handled - it retries, but it isn't fast:
+    a sustained overload window can take on the order of a minute to clear (worst
+    case ~60-70s with the default `metadata_max_retries`/`metadata_max_retry_delay`,
+    confirmed by live testing during #39), so callers should not assume this
+    client resolves quickly.
+    """
 
     def __init__(self, settings: ArxivSettings):
         self._settings = settings
@@ -103,6 +114,16 @@ class ArxivClient:
             return self._get_text(entry, "atom:summary") or "(no message)"
         return None
 
+    def _worst_case_wait_seconds(self) -> float:
+        """Total backoff time `_get_with_retry` sleeps across a fully-exhausted retry
+        run (excludes the per-request round trip itself), for error messages/logging -
+        so "it's slow, not stuck" is stated in seconds, not just implied."""
+        max_retries = self._settings.metadata_max_retries
+        return sum(
+            min(self.rate_limit_delay * (2**attempt), self._settings.metadata_max_retry_delay)
+            for attempt in range(max_retries - 1)
+        )
+
     async def _get_with_retry(self, url: str, context: str = "") -> str:
         """GET an arXiv API URL, honoring arXiv's documented rate-limit policy.
 
@@ -115,6 +136,14 @@ class ArxivClient:
         `_extract_embedded_error`), since a single request already complying with
         the documented policy can still be throttled by server-side load shedding.
         Non-retryable errors (other 4xx, timeouts) propagate immediately.
+
+        This is deliberately slow to give up: with the default settings
+        (`metadata_max_retries=8`, `metadata_max_retry_delay=10.0`), a fully-exhausted
+        retry run sleeps ~59s before raising - confirmed against a real arXiv overload
+        window while fixing #39, where a plain query failed 406 on 8/8 consecutive
+        attempts over ~70s (including request time) before succeeding on the very
+        next attempt. Callers (e.g. the Airflow `fetch_metadata` task) should expect
+        this call to occasionally take the better part of a minute, not fail fast.
 
         :param url: Fully-built arXiv API query URL
         :param context: Optional message suffix for logging/errors (e.g. " for paper X")
@@ -151,16 +180,35 @@ class ArxivClient:
                 logger.error(f"Failed to fetch from arXiv{context}: {e}")
                 raise ArxivAPIException(f"Unexpected error fetching from arXiv{context}: {e}") from e
 
-            if isinstance(error, ArxivAPIClientError) or attempt == max_retries - 1:
+            if isinstance(error, ArxivAPIClientError):
                 logger.error(str(error))
                 raise error
+            if attempt == max_retries - 1:
+                # Re-raise as the same (retryable) exception type, so callers that
+                # distinguish ArxivAPIRateLimitError/ArxivAPIServerError still can -
+                # just with the message enriched to say this is arXiv's known
+                # transient-overload quirk, not a permanent rejection of this query.
+                enriched_message = (
+                    f"{error} (gave up after {max_retries} attempts{context}, ~{self._worst_case_wait_seconds():.0f}s "
+                    "of retrying). This matches arXiv's known transient overload behavior (bare 406s / "
+                    "embedded-error-in-a-200 responses - see ArxivClient docstring) which normally clears within "
+                    "about a minute, rather than a permanent rejection of this query; retrying the whole ingestion "
+                    "run later will likely succeed."
+                )
+                logger.error(enriched_message)
+                raise type(error)(enriched_message) from error
             # Generous but bounded: this isn't time-critical, so keep retrying, but
             # cap the interval rather than letting exponential backoff run into minutes.
+            # arXiv's overload windows are known to run tens of seconds, not milliseconds,
+            # so don't expect this to resolve on the first or second retry.
             wait_time = min(self.rate_limit_delay * (2**attempt), self._settings.metadata_max_retry_delay)
-            logger.warning(f"{error} (attempt {attempt + 1}/{max_retries}); retrying in {wait_time:.0f}s")
+            logger.warning(
+                f"{error} (attempt {attempt + 1}/{max_retries}) - known arXiv overload quirk, not necessarily a bad "
+                f"query; retrying in {wait_time:.0f}s"
+            )
             await asyncio.sleep(wait_time)
 
-        raise ArxivAPIException(f"arXiv API request failed after {max_retries} attempts{context}")
+        raise ArxivAPIException(f"arXiv API request failed{context}: metadata_max_retries is set to {max_retries}")
 
     async def fetch_papers(
         self,
