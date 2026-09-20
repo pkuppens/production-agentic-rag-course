@@ -29,6 +29,7 @@ dependencies = [
     "langchain-ollama>=0.3.0",
     "huggingface-hub[hf-xet]>=0.34.4",
     "torch>=2.5.0",
+    "pyyaml>=6.0.2",
 ]
 readme = "README.md"
 

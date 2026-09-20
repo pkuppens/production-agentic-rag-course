@@ -1,0 +1,129 @@
+# Golden QA set for the arXiv assistant eval harness.
+#
+# Each item is a hand-written question paired with an expected answer, covering
+# CS.AI research topics representative of what gets ingested by the arxiv_ingestion
+# Airflow DAG (recent cs.AI papers, fetched by recency rather than a fixed list).
+# Because the ingested paper set changes with every DAG run, `reference_paper_id`
+# is left unset here rather than pinned to arXiv IDs that may not be indexed
+# locally yet — see docs/adr/0006-golden-qa-eval-dataset.md.
+
+- question: What is retrieval-augmented generation (RAG) and why is it used with large language models?
+  expected_answer: >
+    RAG combines a retrieval step over an external knowledge source (e.g. a document
+    index) with a generative language model, feeding retrieved passages into the
+    model's context before it answers. It is used to ground generated answers in
+    up-to-date or domain-specific evidence, reducing hallucination compared to
+    relying on the model's parametric knowledge alone.
+  reference_paper_id: null
+
+- question: What is the difference between BM25 and dense vector retrieval?
+  expected_answer: >
+    BM25 is a sparse, keyword-based ranking function that scores documents by term
+    frequency and inverse document frequency, matching exact or near-exact terms.
+    Dense vector retrieval embeds queries and documents into a shared vector space
+    and ranks by semantic similarity (e.g. cosine distance), which can match
+    paraphrases and related concepts that share no exact keywords.
+  reference_paper_id: null
+
+- question: What is reciprocal rank fusion (RRF) and how is it used in hybrid search?
+  expected_answer: >
+    RRF is a method for combining multiple ranked result lists (e.g. BM25 and
+    vector search results) into a single ranking by summing, for each document,
+    the reciprocal of its rank in each list. It is used in hybrid search to merge
+    keyword and semantic retrieval results without needing to normalize their
+    differing score scales.
+  reference_paper_id: null
+
+- question: What is an LLM agent, as distinct from a plain chat-completion model call?
+  expected_answer: >
+    An LLM agent uses a language model as a controller that can plan, call external
+    tools or functions, observe the results, and iterate over multiple steps toward
+    a goal, rather than producing a single one-shot response. It typically maintains
+    state across steps and decides dynamically what action to take next.
+  reference_paper_id: null
+
+- question: What is a guardrail node in an agentic RAG pipeline, and what does it check?
+  expected_answer: >
+    A guardrail node is an early pipeline step that validates whether an incoming
+    query is in-scope for the system (e.g. relevant to the domain the assistant
+    covers) before spending retrieval or generation effort on it. Queries that fail
+    the check are short-circuited to an out-of-scope response instead of proceeding.
+  reference_paper_id: null
+
+- question: Why might a RAG pipeline rewrite the user's query before retrying retrieval?
+  expected_answer: >
+    If the initially retrieved documents are graded as not relevant to the question,
+    the pipeline can rewrite the query (e.g. to be more specific, use different
+    terminology, or decompose it) and re-run retrieval, since the original phrasing
+    may not match how the relevant content is expressed in the indexed documents.
+  reference_paper_id: null
+
+- question: What does "grading documents" mean in an agentic retrieval pipeline?
+  expected_answer: >
+    Grading documents means running each retrieved chunk through a relevance check
+    (often an LLM judging relevance to the query) so the pipeline can decide whether
+    the evidence is good enough to answer from, or whether it should rewrite the
+    query and retrieve again.
+  reference_paper_id: null
+
+- question: What is chain-of-thought prompting?
+  expected_answer: >
+    Chain-of-thought prompting elicits intermediate reasoning steps from a language
+    model before it produces a final answer, typically improving performance on
+    multi-step reasoning tasks compared to prompting for a direct answer.
+  reference_paper_id: null
+
+- question: What is the purpose of chunking text before indexing it for search?
+  expected_answer: >
+    Chunking splits long documents into smaller, overlapping segments so that each
+    indexed unit is small enough to embed and retrieve precisely, fits within a
+    model's context window alongside other retrieved chunks, and preserves enough
+    surrounding context (via overlap) that meaning isn't lost at chunk boundaries.
+  reference_paper_id: null
+
+- question: What is a common risk of increasing the number of autonomous steps an LLM agent can take?
+  expected_answer: >
+    More autonomous steps increase the chance of compounding errors, since an
+    early mistake (a bad tool call, a misread observation) can propagate and
+    mislead later steps; it also increases latency, cost, and the difficulty of
+    tracing why the agent produced a given outcome.
+  reference_paper_id: null
+
+- question: What is in-context learning?
+  expected_answer: >
+    In-context learning is the ability of a language model to adapt its behavior
+    on a task using examples or instructions provided directly in the prompt,
+    without updating the model's weights.
+  reference_paper_id: null
+
+- question: Why do RAG systems cite sources alongside generated answers?
+  expected_answer: >
+    Citing sources lets a user verify the generated answer against the underlying
+    evidence, increases trust in the system, and makes it possible to catch cases
+    where the model's answer isn't actually supported by the retrieved documents.
+  reference_paper_id: null
+
+- question: What is the difference between fine-tuning and retrieval-augmented generation as ways to give a model new knowledge?
+  expected_answer: >
+    Fine-tuning updates a model's weights on new data, baking that knowledge into
+    the parameters permanently and requiring retraining to update it further. RAG
+    instead keeps the model's weights fixed and supplies new or changing knowledge
+    at inference time via retrieved context, which is cheaper to update but depends
+    on retrieval quality at query time.
+  reference_paper_id: null
+
+- question: What is a typical cause of hallucination in RAG systems even when retrieval succeeds?
+  expected_answer: >
+    The generator can still hallucinate if it ignores or misreads the retrieved
+    context and falls back on its parametric knowledge, if the retrieved passages
+    are only tangentially relevant, or if the model over-generalizes beyond what
+    the retrieved evidence actually supports.
+  reference_paper_id: null
+
+- question: What is a multi-agent LLM system?
+  expected_answer: >
+    A multi-agent LLM system coordinates several LLM-driven agents, often with
+    different roles or specializations (e.g. a planner, a researcher, a critic),
+    that communicate and divide work to solve a task collectively rather than
+    relying on a single agent to do everything.
+  reference_paper_id: null
