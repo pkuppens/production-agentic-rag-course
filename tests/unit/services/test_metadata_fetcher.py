@@ -102,3 +102,61 @@ class TestMetadataFetcher:
 
         # Should complete quickly for empty result
         assert end_time - start_time < 1.0
+
+    @pytest.mark.asyncio
+    async def test_process_and_store_papers_skips_already_processed(self, metadata_fetcher, sample_arxiv_papers):
+        """Papers already marked pdf_processed=True in the DB should skip PDF
+        download/parsing entirely, and must not have their stored content clobbered
+        with "not processed" placeholders."""
+        already_processed = MagicMock(pdf_processed=True)
+        mock_session = MagicMock()
+        metadata_fetcher._process_pdfs_batch = AsyncMock(
+            return_value={"downloaded": 0, "parsed": 0, "parsed_papers": {}, "errors": []}
+        )
+
+        with patch("src.services.metadata_fetcher.PaperRepository") as mock_repo_cls:
+            mock_repo = mock_repo_cls.return_value
+            mock_repo.get_by_arxiv_id.return_value = already_processed
+            mock_repo.upsert.return_value = MagicMock()
+
+            results = await metadata_fetcher.process_and_store_papers(
+                sample_arxiv_papers, process_pdfs=True, store_to_db=True, db_session=mock_session
+            )
+
+        assert results["pdfs_skipped"] == len(sample_arxiv_papers)
+        assert results["pdfs_downloaded"] == 0
+        metadata_fetcher._process_pdfs_batch.assert_awaited_once_with([])
+
+        # Existing parsed content must not be overwritten: pdf_processed/raw_text
+        # should be absent from the PaperCreate sent to upsert (exclude_unset semantics).
+        assert mock_repo.upsert.call_count == len(sample_arxiv_papers)
+        for call in mock_repo.upsert.call_args_list:
+            paper_create = call.args[0]
+            assert "pdf_processed" not in paper_create.model_fields_set
+            assert "raw_text" not in paper_create.model_fields_set
+
+    @pytest.mark.asyncio
+    async def test_process_and_store_papers_new_paper_gets_placeholder(self, metadata_fetcher, sample_arxiv_papers):
+        """A paper with no prior DB record and a failed/skipped parse still gets stored
+        with the existing "not processed" placeholder behavior (unchanged)."""
+        mock_session = MagicMock()
+        metadata_fetcher._process_pdfs_batch = AsyncMock(
+            return_value={"downloaded": 0, "parsed": 0, "parsed_papers": {}, "errors": []}
+        )
+
+        with patch("src.services.metadata_fetcher.PaperRepository") as mock_repo_cls:
+            mock_repo = mock_repo_cls.return_value
+            mock_repo.get_by_arxiv_id.return_value = None
+            mock_repo.upsert.return_value = MagicMock()
+
+            results = await metadata_fetcher.process_and_store_papers(
+                sample_arxiv_papers, process_pdfs=True, store_to_db=True, db_session=mock_session
+            )
+
+        assert results["pdfs_skipped"] == 0
+        metadata_fetcher._process_pdfs_batch.assert_awaited_once_with(sample_arxiv_papers)
+
+        for call in mock_repo.upsert.call_args_list:
+            paper_create = call.args[0]
+            assert paper_create.pdf_processed is False
+            assert "pdf_processed" in paper_create.model_fields_set
