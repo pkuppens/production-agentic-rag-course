@@ -259,8 +259,14 @@ class TestArxivClient:
             error_response.raise_for_status.return_value = None
             mock_client.return_value.__aenter__.return_value.get = AsyncMock(return_value=error_response)
 
-            with pytest.raises(ArxivAPIServerError, match="embedded error"):
+            with pytest.raises(ArxivAPIServerError, match="embedded error") as exc_info:
                 await arxiv_client.fetch_papers(max_results=1)
+
+        # The exhausted-retries message should tell an operator this is a known arXiv
+        # quirk (not a bad query) and roughly how long it just spent retrying, since
+        # this failure mode is otherwise indistinguishable from a real bug at a glance.
+        assert "known transient overload" in str(exc_info.value)
+        assert "gave up after" in str(exc_info.value)
 
     @pytest.mark.asyncio
     async def test_fetch_paper_by_id_success(self, arxiv_client, mock_arxiv_response):
