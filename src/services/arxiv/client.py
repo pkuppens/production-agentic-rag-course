@@ -36,6 +36,12 @@ class ArxivClient:
     case ~60-70s with the default `metadata_max_retries`/`metadata_max_retry_delay`,
     confirmed by live testing during #39), so callers should not assume this
     client resolves quickly.
+
+    Separately, arXiv's `submittedDate:[...]` range-query syntax is unconditionally
+    rejected with a 406, independent of the date/category/encoding - not throttling,
+    and retrying it does not help (confirmed live: 19/19 retries failed over ~185s
+    across 6 trials). `fetch_papers`'s `from_date`/`to_date` filtering no longer uses
+    that syntax; see its docstring and docs/406.md for the full investigation.
     """
 
     def __init__(self, settings: ArxivSettings):
@@ -232,25 +238,35 @@ class ArxivClient:
 
         Returns:
             List of ArxivPaper objects for the configured category
+
+        Date filtering does NOT use arXiv's `submittedDate:[...]` range-query syntax -
+        that syntax is currently rejected with an unconditional 406, independent of
+        the date value, category, or bracket encoding (see docs/406.md). It also
+        turns out to be an especially bad match for arXiv's throttling behavior:
+        every `submittedDate:[...]` query is uniquely parameterized (different bounds
+        every call), so it almost never hits arXiv's shared response cache, and a
+        cache-miss query gets a 406 with an empty body on every attempt while this
+        host is throttled - confirmed live: 19/19 retries failed across 6
+        independent trials (~185s each, 0% success), while the plain, cacheable
+        `cat:{category}` query (no date bounds) succeeded 6/6. So instead, this
+        fetches that same plain/cacheable query over a wider window
+        (`date_filter_scan_results` results), sorted by submittedDate descending,
+        and filters to the requested date range client-side.
         """
         if max_results is None:
             max_results = self.max_results
 
-        # Build search query
         search_query = f"cat:{self.search_category}"
 
-        # Add date filtering if provided
-        if from_date or to_date:
-            # Convert dates to arXiv format (YYYYMMDDHHMM) - use 0000 for start of day, 2359 for end
-            date_from = f"{from_date}0000" if from_date else "*"
-            date_to = f"{to_date}2359" if to_date else "*"
-            # Use correct arXiv API syntax with + symbols
-            search_query += f" AND submittedDate:[{date_from}+TO+{date_to}]"
+        # Scan a wider window than requested when date-filtering, then trim to
+        # max_results after filtering - see docstring above for why this can't be
+        # done with arXiv's submittedDate:[...] syntax.
+        fetch_count = max(max_results, self._settings.date_filter_scan_results) if (from_date or to_date) else max_results
 
         params = {
             "search_query": search_query,
             "start": start,
-            "max_results": min(max_results, 2000),
+            "max_results": min(fetch_count, 2000),
             "sortBy": sort_by,
             "sortOrder": sort_order,
         }
@@ -258,15 +274,35 @@ class ArxivClient:
         # `[`/`]` must NOT be left unescaped: arXiv's edge rejects literal brackets in
         # the query string with a 406 (confirmed by direct A/B testing - not a
         # transient/throttle issue, a hard requirement of arXiv's request handling).
-        safe = ":+"  # Don't encode :, + characters needed for arXiv's date-range syntax
+        # Kept here for any other bracket-using callers of this safe-charset; date
+        # ranges no longer use it (see docstring above).
+        safe = ":+"  # Don't encode :, + characters needed for arXiv queries
         url = f"{self.base_url}?{urlencode(params, quote_via=quote, safe=safe)}"
 
-        logger.info(f"Fetching {max_results} {self.search_category} papers from arXiv")
+        logger.info(f"Fetching {fetch_count} {self.search_category} papers from arXiv")
         xml_data = await self._get_with_retry(url)
         papers = self._parse_response(xml_data)
+
+        if from_date or to_date:
+            papers = [p for p in papers if self._in_date_range(p.published_date, from_date, to_date)]
+            papers = papers[:max_results]
+
         logger.info(f"Fetched {len(papers)} papers")
 
         return papers
+
+    @staticmethod
+    def _in_date_range(published_date: str, from_date: Optional[str], to_date: Optional[str]) -> bool:
+        """Check an ISO `published_date` (e.g. "2026-09-20T12:34:56Z") against an
+        inclusive YYYYMMDD `from_date`/`to_date` range. Used to filter client-side
+        instead of arXiv's broken `submittedDate:[...]` range query - see
+        `fetch_papers`'s docstring."""
+        date_part = published_date[:10].replace("-", "")
+        if from_date and date_part < from_date:
+            return False
+        if to_date and date_part > to_date:
+            return False
+        return True
 
     async def fetch_papers_with_query(
         self,
@@ -280,7 +316,12 @@ class ArxivClient:
         Fetch papers from arXiv using a custom search query.
 
         Args:
-            search_query: Custom arXiv search query (e.g., "cat:cs.AI AND submittedDate:[20240101 TO 20241231]")
+            search_query: Custom arXiv search query (e.g., "au:LeCun AND cat:cs.AI").
+                Do NOT include a `submittedDate:[...]`/`lastUpdatedDate:[...]` range
+                clause here - that syntax is currently rejected with an
+                unconditional 406 by arXiv's export API, regardless of the date
+                value or encoding (see docs/406.md). Use `fetch_papers`'s
+                `from_date`/`to_date` instead, which filters client-side.
             max_results: Maximum number of papers to fetch (uses settings default if None)
             start: Starting index for pagination
             sort_by: Sort criteria (submittedDate, lastUpdatedDate, relevance)
@@ -290,9 +331,6 @@ class ArxivClient:
             List of ArxivPaper objects matching the search query
 
         Examples:
-            # Papers from last 30 days
-            "cat:cs.AI AND submittedDate:[20240101 TO *]"
-
             # Papers by specific author
             "au:LeCun AND cat:cs.AI"
 

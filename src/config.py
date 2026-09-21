@@ -43,6 +43,14 @@ class ArxivSettings(BaseConfigSettings):
     # letting exponential backoff run into minutes (see ArxivClient._get_with_retry).
     metadata_max_retries: int = 8
     metadata_max_retry_delay: float = 10.0
+    # arXiv's submittedDate:[...] range-query syntax is unconditionally rejected with
+    # a 406 - confirmed live to be independent of the date value, category, or bracket
+    # encoding (see docs/406.md). ArxivClient.fetch_papers works around this by
+    # scanning this many of the most recent, undated (and therefore cacheable)
+    # results and filtering to the requested date range client-side, instead of
+    # asking arXiv to filter server-side. Must be large enough to cover a full day
+    # of `search_category` submissions, or older-than-target-date papers get missed.
+    date_filter_scan_results: int = 300
 
     namespaces: dict = {
         "atom": "http://www.w3.org/2005/Atom",
