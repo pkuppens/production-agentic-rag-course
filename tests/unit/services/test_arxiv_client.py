@@ -84,7 +84,10 @@ class TestArxivClient:
 
     @pytest.mark.asyncio
     async def test_fetch_papers_with_date_filters(self, arxiv_client, mock_arxiv_response):
-        """Test paper fetching with date filters."""
+        """Date filtering must NOT use arXiv's submittedDate:[...] range-query syntax -
+        that's unconditionally rejected with a 406, independent of the date value or
+        encoding (see docs/406.md). It should send the plain, cacheable category
+        query instead, and filter to the requested date range client-side."""
         with patch("httpx.AsyncClient") as mock_client:
             mock_response = MagicMock()
             mock_response.text = mock_arxiv_response
@@ -95,11 +98,53 @@ class TestArxivClient:
             papers = await arxiv_client.fetch_papers(max_results=1, from_date="20240101", to_date="20240131")
 
             assert len(papers) == 1
-            # Verify the URL includes date filters
             call_args = mock_client.return_value.__aenter__.return_value.get.call_args[0][0]
-            # Brackets must be percent-encoded, not sent literally - arXiv's edge
-            # rejects literal `[`/`]` in the query string with a 406.
-            assert "submittedDate:%5B202401010000+TO+202401312359%5D" in call_args
+            assert "submittedDate:" not in call_args  # no range-query clause
+            assert "%5B" not in call_args  # no bracket range at all
+            assert "search_query=cat:cs.AI" in call_args
+            # Widened to the date-filter scan window, not the requested max_results=1.
+            assert f"max_results={arxiv_client._settings.date_filter_scan_results}" in call_args
+
+    @pytest.mark.asyncio
+    async def test_fetch_papers_date_filter_excludes_out_of_range_papers(self, arxiv_client):
+        """Papers outside the requested from_date/to_date range must be filtered out
+        client-side, since arXiv is no longer asked to filter them server-side."""
+        multi_entry_response = """<?xml version="1.0" encoding="UTF-8"?>
+        <feed xmlns="http://www.w3.org/2005/Atom">
+          <entry>
+            <id>http://arxiv.org/abs/2024.0001v1</id>
+            <published>2024-01-15T00:00:00Z</published>
+            <title>In range</title>
+            <summary>abstract</summary>
+            <author><name>Author</name></author>
+            <category term="cs.AI" scheme="http://arxiv.org/schemas/atom"/>
+          </entry>
+          <entry>
+            <id>http://arxiv.org/abs/2024.0002v1</id>
+            <published>2023-12-31T00:00:00Z</published>
+            <title>Before range</title>
+            <summary>abstract</summary>
+            <author><name>Author</name></author>
+            <category term="cs.AI" scheme="http://arxiv.org/schemas/atom"/>
+          </entry>
+          <entry>
+            <id>http://arxiv.org/abs/2024.0003v1</id>
+            <published>2024-02-01T00:00:00Z</published>
+            <title>After range</title>
+            <summary>abstract</summary>
+            <author><name>Author</name></author>
+            <category term="cs.AI" scheme="http://arxiv.org/schemas/atom"/>
+          </entry>
+        </feed>"""
+        with patch("httpx.AsyncClient") as mock_client:
+            mock_response = MagicMock()
+            mock_response.text = multi_entry_response
+            mock_response.raise_for_status.return_value = None
+            mock_client.return_value.__aenter__.return_value.get = AsyncMock(return_value=mock_response)
+
+            papers = await arxiv_client.fetch_papers(max_results=10, from_date="20240101", to_date="20240131")
+
+            assert [p.title for p in papers] == ["In range"]
 
     @pytest.mark.asyncio
     async def test_fetch_papers_http_timeout(self, arxiv_client):
