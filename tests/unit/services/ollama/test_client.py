@@ -7,11 +7,11 @@ def make_settings() -> Settings:
     return Settings()
 
 
-def test_get_langchain_model_returns_chat_ollama_bound_to_client_host():
+def test_get_langchain_chat_model_returns_chat_ollama_bound_to_client_host():
     """The LangGraph agent nodes need a BaseChatModel wired to this client's Ollama host."""
     client = OllamaClient(make_settings())
 
-    model = client.get_langchain_model(model="llama3.2:1b", temperature=0.3)
+    model = client.get_langchain_chat_model(model="llama3.2:1b", temperature=0.3)
 
     assert isinstance(model, ChatOllama)
     assert model.model == "llama3.2:1b"
@@ -19,9 +19,9 @@ def test_get_langchain_model_returns_chat_ollama_bound_to_client_host():
     assert model.temperature == 0.3
 
 
-def test_get_langchain_model_defaults_temperature_to_zero():
+def test_get_langchain_chat_model_defaults_temperature_to_zero():
     client = OllamaClient(make_settings())
 
-    model = client.get_langchain_model(model="llama3.2:1b")
+    model = client.get_langchain_chat_model(model="llama3.2:1b")
 
     assert model.temperature == 0.0

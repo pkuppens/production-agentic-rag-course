@@ -22,7 +22,7 @@ class OllamaClient:
         self.prompt_builder = RAGPromptBuilder()
         self.response_parser = ResponseParser()
 
-    def get_langchain_model(self, model: str, temperature: float = 0.0) -> ChatOllama:
+    def get_langchain_chat_model(self, model: str, temperature: float = 0.0) -> ChatOllama:
         """
         Build a LangChain-compatible chat model bound to this client's Ollama instance.
 
