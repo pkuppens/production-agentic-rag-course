@@ -3,6 +3,7 @@ import logging
 from typing import Any, Dict, List, Optional
 
 import httpx
+from langchain_ollama import ChatOllama
 from src.config import Settings
 from src.exceptions import OllamaConnectionError, OllamaException, OllamaTimeoutError
 from src.schemas.ollama import RAGResponse
@@ -20,6 +21,22 @@ class OllamaClient:
         self.timeout = httpx.Timeout(float(settings.ollama_timeout))
         self.prompt_builder = RAGPromptBuilder()
         self.response_parser = ResponseParser()
+
+    def get_langchain_chat_model(self, model: str, temperature: float = 0.0) -> ChatOllama:
+        """
+        Build a LangChain-compatible chat model bound to this client's Ollama instance.
+
+        Used by the LangGraph agentic RAG nodes (guardrail, rewrite, grade, generate),
+        which need a `BaseChatModel` for `.with_structured_output()` / `.ainvoke()`.
+
+        Args:
+            model: Model name to use
+            temperature: Sampling temperature
+
+        Returns:
+            A ChatOllama instance pointed at this client's base_url
+        """
+        return ChatOllama(model=model, base_url=self.base_url, temperature=temperature)
 
     async def health_check(self) -> Dict[str, Any]:
         """
