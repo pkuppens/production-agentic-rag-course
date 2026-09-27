@@ -10,6 +10,7 @@ from unittest.mock import AsyncMock, Mock
 import pytest
 from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 from src.services.agents.context import Context
+from src.services.ollama.client import OllamaClient
 
 
 @pytest.fixture
@@ -43,10 +44,14 @@ def mock_opensearch_client():
 
 @pytest.fixture
 def mock_ollama_client():
-    """Mock Ollama client. LLM calls are not awaitable by default, so agent
-    nodes take their fallback/heuristic path — matching how these nodes
-    behave when the underlying LLM call fails in production."""
-    return Mock()
+    """Mock Ollama client, spec'd against the real OllamaClient.
+
+    The spec makes calls to methods that don't exist on OllamaClient raise
+    AttributeError, so tests can't silently pass against a made-up API (this
+    hid issue #41). LLM calls are not awaitable by default, so agent nodes
+    take their fallback/heuristic path unless a test stubs
+    `get_langchain_chat_model` (see `stub_chat_model` in test_nodes.py)."""
+    return Mock(spec=OllamaClient)
 
 
 @pytest.fixture
