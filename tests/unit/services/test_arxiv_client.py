@@ -146,6 +146,100 @@ class TestArxivClient:
 
             assert [p.title for p in papers] == ["In range"]
 
+    @staticmethod
+    def _feed(published_dates: list[str]) -> str:
+        """Build an arXiv Atom feed with one entry per ISO date, newest first."""
+        entries = "".join(
+            f"""<entry>
+            <id>http://arxiv.org/abs/2024.{i:04d}v1</id>
+            <published>{d}T00:00:00Z</published>
+            <title>Paper {i}</title>
+            <summary>abstract</summary>
+            <author><name>Author</name></author>
+            <category term="cs.AI" scheme="http://arxiv.org/schemas/atom"/>
+          </entry>"""
+            for i, d in enumerate(published_dates)
+        )
+        return f'<?xml version="1.0" encoding="UTF-8"?><feed xmlns="http://www.w3.org/2005/Atom">{entries}</feed>'
+
+    async def _fetch_with_scan(self, arxiv_client, published_dates, scan_size=3, **fetch_kwargs):
+        """Run fetch_papers against a mocked scan of `published_dates` with a small scan window."""
+        client = ArxivClient(arxiv_client._settings.model_copy(update={"date_filter_scan_results": scan_size}))
+        with patch("httpx.AsyncClient") as mock_client:
+            mock_response = MagicMock()
+            mock_response.text = self._feed(published_dates)
+            mock_response.raise_for_status.return_value = None
+            mock_client.return_value.__aenter__.return_value.get = AsyncMock(return_value=mock_response)
+            return await client.fetch_papers(max_results=2, **fetch_kwargs)
+
+    @pytest.mark.asyncio
+    async def test_date_range_older_than_full_scan_warns(self, arxiv_client, caplog):
+        """A full scan that doesn't reach back to from_date means older papers were never
+        seen - results are incomplete, so warn instead of silently returning too few."""
+        caplog.set_level("WARNING", logger="src.services.arxiv.client")
+
+        papers = await self._fetch_with_scan(
+            arxiv_client, ["2024-01-20", "2024-01-19", "2024-01-18"], from_date="20240101", to_date="20240110"
+        )
+
+        assert papers == []
+        assert "2024-01-18" in caplog.text
+        assert "ARXIV__DATE_FILTER_SCAN_RESULTS" in caplog.text
+
+    @pytest.mark.asyncio
+    async def test_date_range_older_than_partial_scan_does_not_warn(self, arxiv_client, caplog):
+        """If the scan returned fewer papers than its size, arXiv had nothing older - no warning."""
+        caplog.set_level("WARNING", logger="src.services.arxiv.client")
+
+        await self._fetch_with_scan(arxiv_client, ["2024-01-20", "2024-01-19"], from_date="20240101")
+
+        assert caplog.text == ""
+
+    @pytest.mark.asyncio
+    async def test_date_range_older_than_full_scan_with_full_result_does_not_warn(self, arxiv_client, caplog):
+        """Unscanned older papers don't matter once max_results papers were found - no warning."""
+        caplog.set_level("WARNING", logger="src.services.arxiv.client")
+
+        papers = await self._fetch_with_scan(
+            arxiv_client, ["2024-01-20", "2024-01-19", "2024-01-18"], from_date="20240101", to_date="20240131"
+        )
+
+        assert len(papers) == 2
+        assert caplog.text == ""
+
+    @pytest.mark.asyncio
+    async def test_date_range_newer_than_newest_paper_warns(self, arxiv_client, caplog):
+        """arXiv announces no papers on Friday/Saturday or holidays, so a range of the last
+        couple of days can be newer than every available paper - warn with the newest date."""
+        caplog.set_level("WARNING", logger="src.services.arxiv.client")
+
+        papers = await self._fetch_with_scan(
+            arxiv_client, ["2024-01-18", "2024-01-17", "2024-01-16"], from_date="20240119", to_date="20240121"
+        )
+
+        assert papers == []
+        assert "2024-01-18" in caplog.text
+        assert "announce" in caplog.text
+
+    @pytest.mark.asyncio
+    async def test_date_range_inside_scan_does_not_warn(self, arxiv_client, caplog):
+        caplog.set_level("WARNING", logger="src.services.arxiv.client")
+
+        papers = await self._fetch_with_scan(
+            arxiv_client, ["2024-01-20", "2024-01-19", "2024-01-18"], from_date="20240119", to_date="20240120"
+        )
+
+        assert len(papers) == 2
+        assert caplog.text == ""
+
+    @pytest.mark.asyncio
+    async def test_no_date_filter_does_not_warn(self, arxiv_client, caplog):
+        caplog.set_level("WARNING", logger="src.services.arxiv.client")
+
+        await self._fetch_with_scan(arxiv_client, ["2024-01-20", "2024-01-19", "2024-01-18"])
+
+        assert caplog.text == ""
+
     @pytest.mark.asyncio
     async def test_fetch_papers_http_timeout(self, arxiv_client):
         """Test handling of HTTP timeout errors."""

@@ -262,11 +262,12 @@ class ArxivClient:
         # max_results after filtering - see docstring above for why this can't be
         # done with arXiv's submittedDate:[...] syntax.
         fetch_count = max(max_results, self._settings.date_filter_scan_results) if (from_date or to_date) else max_results
+        request_count = min(fetch_count, 2000)
 
         params = {
             "search_query": search_query,
             "start": start,
-            "max_results": min(fetch_count, 2000),
+            "max_results": request_count,
             "sortBy": sort_by,
             "sortOrder": sort_order,
         }
@@ -284,12 +285,43 @@ class ArxivClient:
         papers = self._parse_response(xml_data)
 
         if from_date or to_date:
+            scanned = papers
             papers = [p for p in papers if self._in_date_range(p.published_date, from_date, to_date)]
             papers = papers[:max_results]
+            if sort_by == "submittedDate" and sort_order == "descending" and len(papers) < max_results:
+                warning = self._scan_window_warning(scanned, request_count, from_date)
+                if warning:
+                    logger.warning(warning)
 
         logger.info(f"Fetched {len(papers)} papers")
 
         return papers
+
+    @staticmethod
+    def _scan_window_warning(scanned: List[ArxivPaper], scan_size: int, from_date: Optional[str]) -> Optional[str]:
+        """Explain why a client-side date filter returned fewer papers than requested.
+
+        `scanned` is the newest-first scan (before date filtering). Returns a warning
+        message when `from_date` falls outside what the scan covers, else None.
+        Only called when the filtered result is short, so a full result never warns.
+        """
+        if not scanned or not from_date:
+            return None
+        newest = scanned[0].published_date[:10]
+        oldest = scanned[-1].published_date[:10]
+        if from_date > newest.replace("-", ""):
+            return (
+                f"Date range starts at {from_date}, after the newest available paper ({newest}). "
+                "arXiv does not announce new papers on Friday/Saturday or on holidays - "
+                "widen the date range to include earlier days."
+            )
+        if len(scanned) >= scan_size and from_date < oldest.replace("-", ""):
+            return (
+                f"Date range starts at {from_date}, but the scan of the newest {scan_size} papers only "
+                f"reaches back to {oldest} - older papers were not scanned, so results may be incomplete. "
+                "Increase ARXIV__DATE_FILTER_SCAN_RESULTS or use a more recent date range."
+            )
+        return None
 
     @staticmethod
     def _in_date_range(published_date: str, from_date: Optional[str], to_date: Optional[str]) -> bool:
