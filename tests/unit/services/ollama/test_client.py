@@ -25,3 +25,14 @@ def test_get_langchain_chat_model_defaults_temperature_to_zero():
     model = client.get_langchain_chat_model(model="llama3.2:1b")
 
     assert model.temperature == 0.0
+
+
+def test_get_langchain_chat_model_passes_configured_timeout():
+    """Agent-node LLM calls must respect OLLAMA_TIMEOUT, like the other OllamaClient methods."""
+    settings = Settings(ollama_timeout=42)
+    client = OllamaClient(settings)
+
+    model = client.get_langchain_chat_model(model="llama3.2:1b")
+
+    assert model.client_kwargs == {"timeout": client.timeout}
+    assert client.timeout.read == 42.0

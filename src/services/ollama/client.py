@@ -34,9 +34,15 @@ class OllamaClient:
             temperature: Sampling temperature
 
         Returns:
-            A ChatOllama instance pointed at this client's base_url
+            A ChatOllama instance pointed at this client's base_url, using the configured
+            OLLAMA_TIMEOUT for its HTTP calls
         """
-        return ChatOllama(model=model, base_url=self.base_url, temperature=temperature)
+        return ChatOllama(
+            model=model,
+            base_url=self.base_url,
+            temperature=temperature,
+            client_kwargs={"timeout": self.timeout},
+        )
 
     async def health_check(self) -> Dict[str, Any]:
         """
